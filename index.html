@@ -3,9 +3,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – minimalist edition</title>
+<title>Microwave Timer – with chime</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+/* same minimal styles as previous version */
 :root{
   --accent:#0366d6;
   --bg:#fcfcfc;
@@ -17,7 +18,6 @@
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--bg);
@@ -26,28 +26,11 @@ body{
   display:flex;
   flex-direction:column;
 }
-header{
-  text-align:center;
-  margin-bottom:clamp(1.2rem,4vw,2rem);
-}
-h1{
-  font-size:clamp(1.5rem,4vw,1.9rem);
-  font-weight:600;
-  letter-spacing:-0.2px;
-}
-h1 small{
-  display:block;
-  font-size:0.78em;
-  font-weight:400;
-  color:var(--muted);
-}
-#card{
-  background:var(--card);
-  padding:var(--space);
-  border-radius:var(--radius);
-  box-shadow:0 6px 16px rgba(0,0,0,0.05);
-  flex:1 0 auto;
-}
+header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
+h1{font-size:clamp(1.5rem,4vw,1.9rem);font-weight:600;letter-spacing:-0.2px;}
+h1 small{display:block;font-size:0.78em;font-weight:400;color:var(--muted);}
+#card{background:var(--card);padding:var(--space);border-radius:var(--radius);
+      box-shadow:0 6px 16px rgba(0,0,0,0.05);flex:1 0 auto;}
 .field{margin-top:var(--space);}
 label{font-size:0.95rem;display:block;margin-bottom:0.2rem;}
 input[type=range]{width:100%;margin:0.3rem 0;}
@@ -56,38 +39,16 @@ details{margin-top:var(--space);border-top:1px dashed #dcdcdc;padding-top:var(--
 summary{cursor:pointer;font-weight:500;color:var(--accent);list-style:none;}
 input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #d0d0d0;border-radius:var(--radius);width:100%;margin-top:0.25rem;}
 input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);}
-button{
-  width:100%;
-  background:var(--accent);
-  color:#fff;
-  border:none;
-  border-radius:var(--radius);
-  padding:0.85rem;
-  font-size:1.05rem;
-  font-weight:600;
-  margin-top:var(--space);
-}
+button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:0.85rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
 button:active{transform:translateY(1px);}
 #info{display:block;margin-top:var(--space);font-size:1.1rem;text-align:center;font-family:var(--mono);}
-#tempBox{
-  margin-top:0.6rem;
-  text-align:center;
-  font-size:1rem;
-  font-weight:500;
-  color:var(--muted);
-  font-family:var(--mono);
-}
-footer{
-  text-align:center;
-  margin-top:clamp(2rem,5vw,3rem);
-  font-size:0.8rem;
-  color:var(--muted);
-}
+#tempBox{margin-top:0.6rem;text-align:center;font-size:1rem;font-weight:500;color:var(--muted);font-family:var(--mono);}
+footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:var(--muted);}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>loss‑aware, artfully minimal</small></h1>
+  <h1>Microwave Timer<small>with audible chime</small></h1>
 </header>
 
 <div id="card">
@@ -109,13 +70,13 @@ footer{
     <label>Mug mass (g)
       <input type="number" id="mugMass" value="250" step="1">
     </label>
-    <label>Power at room temp P₀ (W)
+    <label>P₀ (W)
       <input type="number" id="power0" value="600" step="10">
     </label>
-    <label>Loss constant hA (W / °C)
+    <label>hA (W / °C)
       <input type="number" id="heatLoss" value="1.1" step="0.1">
     </label>
-    <label>Room temperature (°C)
+    <label>Room T (°C)
       <input type="number" id="roomTemp" value="22" step="0.1">
     </label>
   </details>
@@ -128,53 +89,48 @@ footer{
 </form>
 </div>
 
-<footer>© 2025 • Metric units • Crafted for touch</footer>
+<footer>© 2025 • Metric units</footer>
 
 <script>
 /* constants */
 const cW=4186, cC=880;
 let interval=null, sim=null;
 
+/* tiny chime using Web Audio API */
+function playChime(){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type="sine"; o.frequency.value=1047; // C6
+  g.gain.setValueAtTime(0.001,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.2,ctx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.8);
+  o.connect(g).connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime+0.9);
+}
+
 /* helpers */
 const $=id=>document.getElementById(id);
-const mono = v=>`<span style="font-family:var(--mono)">${v}</span>`;
-function fmtTime(s){
-  s=Math.max(0,Math.round(s));
-  const m=Math.floor(s/60), sec=s%60;
-  return (m?m+":":"")+sec.toString().padStart(2,"0")+" s";
-}
+const mono=v=>`<span style="font-family:var(--mono)">${v}</span>`;
+function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0")+" s";}
 
 /* core calc */
 function getParams(){
-  const T0=parseFloat(startTemp.value),
-        Tt=parseFloat(targetTemp.value),
-        mW=parseFloat(waterMass.value)/1000,
-        mM=parseFloat(mugMass.value)/1000,
-        P0=parseFloat(power0.value),
-        hA=parseFloat(heatLoss.value),
-        Ta=parseFloat(roomTemp.value);
-  const MC = mW*cW + mM*cC;
-  return {T0,Tt,P0,hA,Ta,MC};
+  const T0=parseFloat(startTemp.value),Tt=parseFloat(targetTemp.value);
+  const mW=parseFloat(waterMass.value)/1000,mM=parseFloat(mugMass.value)/1000;
+  const P0=parseFloat(power0.value),hA=parseFloat(heatLoss.value),Ta=parseFloat(roomTemp.value);
+  return {T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
 }
-
 function predictTime(p){
   if(p.Tt<=p.T0) return null;
   if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
-  const num = p.P0 - p.hA*(p.T0-p.Ta);
-  const den = p.P0 - p.hA*(p.Tt-p.Ta);
+  const num=p.P0-p.hA*(p.T0-p.Ta),den=p.P0-p.hA*(p.Tt-p.Ta);
   return (p.MC/p.hA)*Math.log(num/den);
 }
-
 function updateDisplay(){
   $('startVal').textContent=parseFloat(startTemp.value).toFixed(1)+" °C";
   $('targetVal').textContent=parseFloat(targetTemp.value).toFixed(1)+" °C";
-  const p=getParams();
-  const t=predictTime(p);
-  if(!isFinite(t)){
-    $('info').innerHTML="Target unreachable with current settings.";
-  }else{
-    $('info').innerHTML="Estimated heat time : "+mono(fmtTime(t));
-  }
+  const p=getParams(),t=predictTime(p);
+  $('info').innerHTML=!isFinite(t)?"Target unreachable": "Estimated heat time : "+mono(fmtTime(t));
   $('tempBox').textContent="";
 }
 
@@ -189,28 +145,22 @@ function startTimer(){
   interval=setInterval(tick,1000);
   tick();
 }
-
 function tick(){
-  const now=Date.now();
-  const {p,start,tTotal}=sim;
-  const elapsed=(now-start)/1000;
-  const remaining=Math.max(0,tTotal-elapsed);
-  /* Newton solution for temperature */
-  const Ts=p.Ta+p.P0/p.hA;
-  const T=p.Ta+p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-
+  const now=Date.now(); const {p,start,tTotal}=sim;
+  const elapsed=(now-start)/1000,remaining=Math.max(0,tTotal-elapsed);
+  const T=p.Ta+p.P0/p.hA-(p.P0/p.hA-(p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
   $('info').innerHTML="Time remaining : "+mono(fmtTime(remaining));
   $('tempBox').textContent="Predicted "+T.toFixed(1)+" °C";
-
   if(remaining<=0){
     clearInterval(interval);
     $('info').innerHTML="Done!";
     $('tempBox').textContent="Reached "+p.Tt.toFixed(1)+" °C";
     $('startBtn').disabled=false;
+    playChime();
   }
 }
 
-/* wire events */
+/* events */
 [startTemp,targetTemp].forEach(el=>el.addEventListener("input",updateDisplay));
 $('calcForm').addEventListener("submit",e=>{e.preventDefault();updateDisplay();});
 $('startBtn').addEventListener("click",startTimer);
