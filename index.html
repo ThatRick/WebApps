@@ -3,17 +3,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – temp‑in‑bar</title>
+<title>Microwave Timer – temperature centered</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
-  --bg:#0d0d0d;                 /* rich charcoal */
+  --bg:#0d0d0d;
   --card:#161616;
   --text:#e8e8e8;
   --muted:#7a7a7a;
-  --track:#2b2b2b;              /* progress track */
-  --fill-start:#00b9ff;         /* cyan‑blue */
-  --fill-end:#00d06c;           /* teal green */
+  --track:#2b2b2b;
+  --fill-start:#00b9ff;
+  --fill-end:#00d06c;
   --radius:14px;
   --space:clamp(0.9rem,3vw,1.4rem);
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
@@ -30,8 +30,8 @@ body{
 }
 body.flash-green{background:#00d06c;}
 header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
-h1{font-size:clamp(1.6rem,4vw,2rem);font-weight:600;letter-spacing:-0.2px;}
-h1 small{display:block;font-size:0.78em;font-weight:400;color:var(--muted);}
+h1{font-size:clamp(1.6rem,4vw,2rem);font-weight:600;}
+h1 small{display:block;font-size:0.78em;color:var(--muted);}
 #card{
   background:var(--card);
   padding:var(--space);
@@ -40,21 +40,18 @@ h1 small{display:block;font-size:0.78em;font-weight:400;color:var(--muted);}
   flex:1 0 auto;
 }
 .field{margin-top:var(--space);}
-label{font-size:1.05rem;display:block;margin-bottom:0.25rem;color:var(--muted);}
+label{font-size:1.05rem;color:var(--muted);margin-bottom:0.25rem;display:block;}
 input[type=range]{width:100%;margin:0.35rem 0;appearance:none;height:6px;background:#444;border-radius:4px;outline:none;}
 input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--fill-end);cursor:pointer;border:0;}
-.value-display{font-weight:600;margin-left:0.4rem;color:var(--text);font-size:1.6rem;}
+.value-display{font-weight:600;color:var(--text);font-size:1.6rem;margin-left:0.4rem;}
 details{margin-top:var(--space);border-top:1px dashed #333;padding-top:var(--space);}
-summary{cursor:pointer;font-weight:500;color:var(--fill-end);list-style:none;}
+summary{cursor:pointer;color:var(--fill-end);font-weight:500;}
 input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #333;border-radius:var(--radius);width:100%;margin-top:0.25rem;background:#000;color:var(--text);}
 input[type=number]:focus{outline:none;border-color:var(--fill-end);box-shadow:0 0 0 3px rgba(0,208,108,0.35);}
-#startBtn,#progressWrap{
-  width:100%;height:54px;border-radius:var(--radius);margin-top:var(--space);
-}
+#startBtn,#progressWrap{width:100%;height:54px;border-radius:var(--radius);margin-top:var(--space);}
 #startBtn{
   background:linear-gradient(90deg,var(--fill-start),var(--fill-end));
-  color:#000;
-  border:none;font-size:1.25rem;font-weight:600;
+  color:#000;border:none;font-size:1.25rem;font-weight:600;
 }
 #startBtn:active{transform:translateY(1px);}
 #progressWrap{
@@ -68,11 +65,11 @@ input[type=number]:focus{outline:none;border-color:var(--fill-end);box-shadow:0 
   width:0%;
   background:linear-gradient(90deg,var(--fill-start),var(--fill-end));
   transition:width 1s linear;
-  display:flex;
-  align-items:center;
-  justify-content:center;
 }
-#progressBar span{
+#barLabel{
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
   font-family:var(--mono);
   font-size:1.4rem;
   color:#fff;
@@ -85,22 +82,13 @@ input[type=number]:focus{outline:none;border-color:var(--fill-end);box-shadow:0 
   text-align:center;
   font-family:var(--mono);
 }
-#tempBox{
-  margin-top:0.25rem;
-  text-align:center;
-  font-size:1.8rem;
-  font-weight:500;
-  color:var(--muted);
-  font-family:var(--mono);
-}
 footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:var(--muted);}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>temperature inside progress bar</small></h1>
+  <h1>Microwave Timer<small>temperature centered</small></h1>
 </header>
-
 <div id="card">
 <form id="calcForm">
   <div class="field">
@@ -111,7 +99,6 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
     <label>Target <span id="targetVal" class="value-display">80 °C</span></label>
     <input type="range" id="targetTemp" min="75" max="90" step="1" value="80">
   </div>
-
   <details>
     <summary>Advanced</summary>
     <label>Water mass (g)<input type="number" id="waterMass" value="303" step="1"></label>
@@ -120,55 +107,38 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
     <label>hA (W / °C)<input type="number" id="heatLoss" value="1.1" step="0.1"></label>
     <label>Room T (°C)<input type="number" id="roomTemp" value="22" step="0.1"></label>
   </details>
-
   <button type="button" id="startBtn">START</button>
-  <div id="progressWrap"><div id="progressBar"><span id="barLabel"></span></div></div>
-
+  <div id="progressWrap"><div id="progressBar"></div><span id="barLabel"></span></div>
   <output id="info"></output>
-  <div id="tempBox"></div>
 </form>
 </div>
-
 <footer>tap anywhere to stop flashing</footer>
-
 <script>
 const SETTINGS_KEY="microwaveTimerSettings";
 const cW=4186,cC=880;
-let interval=null,sim=null,flashInt=null;
-
-/* persistence */
+let interval,sim,flashInt;
+function playChime(){
+  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
+  o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
+}
 function saveSettings(){
   const d={start:+startTemp.value,target:+targetTemp.value,water:+waterMass.value,mug:+mugMass.value,P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value};
   localStorage.setItem(SETTINGS_KEY,JSON.stringify(d));
 }
 function loadSettings(){
-  try{
-    const d=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null");
-    if(!d)return;
-    if(d.start)startTemp.value=d.start;
-    if(d.target)targetTemp.value=d.target;
-    if(d.water)waterMass.value=d.water;
-    if(d.mug)mugMass.value=d.mug;
-    if(d.P0)power0.value=d.P0;
-    if(d.hA)heatLoss.value=d.hA;
-    if(d.room)roomTemp.value=d.room;
-  }catch(e){}
+  const d=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null")||{};
+  if(d.start) startTemp.value=d.start;
+  if(d.target) targetTemp.value=d.target;
+  if(d.water) waterMass.value=d.water;
+  if(d.mug) mugMass.value=d.mug;
+  if(d.P0) power0.value=d.P0;
+  if(d.hA) heatLoss.value=d.hA;
+  if(d.room) roomTemp.value=d.room;
 }
-
-/* chime */
-function playChime(){
-  const ctx=new(window.AudioContext||window.webkitAudioContext)();
-  const osc=ctx.createOscillator(),g=ctx.createGain();
-  osc.type="sine";osc.frequency.value=1047;g.gain.value=0.3;
-  osc.connect(g).connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+1);
-}
-
-/* helpers */
 const $=id=>document.getElementById(id);
-const mono=v=>`<span style="font-family:var(--mono)">${v}</span>`;
 function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0");}
-
-/* model */
 function getParams(){
   const T0=+startTemp.value,Tt=+targetTemp.value;
   const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
@@ -176,65 +146,61 @@ function getParams(){
   return{T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
 }
 function predictTime(p){
-  if(p.Tt<=p.T0)return null;
-  if(p.P0<=p.hA*(p.Tt-p.Ta))return Infinity;
+  if(p.Tt<=p.T0) return null;
+  if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
   return(p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
 }
-
-/* UI updates */
 function updateDisplay(){
   $('startVal').textContent=(+startTemp.value).toFixed(1)+" °C";
   $('targetVal').textContent=(+targetTemp.value).toFixed(1)+" °C";
   const t=predictTime(getParams());
-  $('info').innerHTML=isFinite(t)?mono(fmtTime(t))+" s":"∞";
-  $('tempBox').textContent="";
+  $('info').innerHTML=isFinite(t)?fmtTime(t)+" s":"∞";
   $('startBtn').style.display='block';
   $('progressWrap').style.display='none';
   $('progressBar').style.width='0%';
   saveSettings();
 }
 function startTimer(){
+  clearInterval(flashInt);
   stopFlash();
   const p=getParams(),tTotal=predictTime(p);
-  if(!isFinite(tTotal))return;
+  if(!isFinite(tTotal)) return;
   sim={p,start:Date.now(),tTotal};
   $('startBtn').style.display='none';
   $('progressWrap').style.display='block';
-  const barLabel=$('barLabel');
-  barLabel.textContent=p.T0.toFixed(0)+"°";
-  tick();interval=setInterval(tick,1000);
+  updateBar();
+  interval=setInterval(updateBar,1000);
 }
-function tick(){
+function updateBar(){
   const {p,start,tTotal}=sim;
   const elapsed=(Date.now()-start)/1000,rem=Math.max(0,tTotal-elapsed);
   const progress=Math.min(100*elapsed/tTotal,100);
   $('progressBar').style.width=progress+'%';
-  /* temperature */
-  const T=p.Ta+p.P0/p.hA-(p.P0/p.hA-(p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-  $('barLabel').textContent=T.toFixed(0)+"°";
-  $('info').innerHTML=mono(fmtTime(rem))+" s";
-  $('tempBox').textContent=T.toFixed(1)+" °C";
+  const T=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
+  $('barLabel').textContent=T.toFixed(1)+"°";
+  $('info').innerHTML=fmtTime(rem)+" s";
   if(rem<=0){
     clearInterval(interval);
     $('info').innerHTML="0 s";
-    $('tempBox').textContent=p.Tt.toFixed(1)+" °C";
-    $('barLabel').textContent=p.Tt.toFixed(0)+"°";
-    playChime();beginFlash();
+    $('barLabel').textContent=p.Tt.toFixed(1)+"°";
+    playChime();
+    beginFlash();
   }
 }
-
-/* flashing */
-function beginFlash(){let on=false;flashInt=setInterval(()=>{on=!on;document.body.classList.toggle('flash-green',on);},500);}
-function stopFlash(){clearInterval(flashInt);document.body.classList.remove('flash-green');}
-
-/* events */
+function beginFlash(){
+  let on=false;
+  flashInt=setInterval(()=>{on=!on;document.body.classList.toggle('flash-green',on);},500);
+}
+function stopFlash(){
+  clearInterval(flashInt);
+  document.body.classList.remove('flash-green');
+}
 document.body.addEventListener('click',stopFlash);
 [startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
-  el.addEventListener('input',updateDisplay);el.addEventListener('change',updateDisplay);
+  el.addEventListener('input',updateDisplay);
+  el.addEventListener('change',updateDisplay);
 });
 $('startBtn').addEventListener('click',startTimer);
-
-/* init */
 loadSettings();
 updateDisplay();
 </script>
