@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Microwave Time Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --accent:#0b7dda;
+  --bg:#f9f9f9;
+  --text:#202124;
+  --muted:#646a70;
+  --radius:12px;
+  --space:clamp(0.75rem,2vw,1.2rem);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding:var(--space);
+  line-height:1.5;
+}
+header{
+  text-align:center;
+  margin-bottom:clamp(1.2rem,4vw,2rem);
+}
+h1{
+  font-size:clamp(1.4rem,4vw,1.8rem);
+  font-weight:600;
+}
+h1 small{
+  display:block;
+  font-size:0.75em;
+  font-weight:400;
+  color:var(--muted);
+}
+form{
+  background:#fff;
+  padding:var(--space);
+  border-radius:var(--radius);
+  box-shadow:0 4px 12px rgba(0,0,0,0.06);
+}
+.field{
+  margin-top:var(--space);
+}
+label{
+  font-size:0.95rem;
+  display:block;
+  margin-bottom:0.25rem;
+}
+input[type=range]{
+  width:100%;
+  margin:0.25rem 0;
+}
+.value-display{
+  font-weight:600;
+  margin-left:0.4rem;
+}
+details{
+  margin-top:var(--space);
+  border-top:1px dashed #dcdcdc;
+  padding-top:var(--space);
+}
+summary{
+  cursor:pointer;
+  font-weight:500;
+  color:var(--accent);
+  list-style:none;
+}
+input[type=number]{
+  font-size:1rem;
+  padding:0.6rem 0.8rem;
+  border:1px solid #d0d0d0;
+  border-radius:var(--radius);
+  width:100%;
+  margin-top:0.25rem;
+}
+input[type=number]:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+button{
+  width:100%;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius);
+  padding:0.8rem;
+  font-size:1.05rem;
+  font-weight:600;
+  margin-top:var(--space);
+}
+button:active{
+  transform:translateY(1px);
+}
+output{
+  display:block;
+  margin-top:var(--space);
+  font-size:1.2rem;
+  font-weight:600;
+  text-align:center;
+}
+footer{
+  text-align:center;
+  margin-top:clamp(2rem,5vw,3rem);
+  font-size:0.75rem;
+  color:var(--muted);
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Microwave Time Calculator<small>for ~300 g water + ceramic mug</small></h1>
+</header>
+
+<form id="calcForm">
+  <div class="field">
+    <label for="startTemp">Start temperature: <span id="startVal" class="value-display">13 °C</span></label>
+    <input type="range" id="startTemp" min="5" max="20" step="0.1" value="13">
+  </div>
+  <div class="field">
+    <label for="targetTemp">Target temperature: <span id="targetVal" class="value-display">80 °C</span></label>
+    <input type="range" id="targetTemp" min="75" max="90" step="0.1" value="80">
+  </div>
+
+  <details>
+    <summary>Advanced settings</summary>
+    <label>
+      Water mass (g)
+      <input type="number" id="waterMass" value="303" step="1">
+    </label>
+    <label>
+      Mug mass (g)
+      <input type="number" id="mugMass" value="250" step="1">
+    </label>
+    <label>
+      Effective microwave power (W)
+      <input type="number" id="power" value="480" step="10">
+    </label>
+  </details>
+
+  <button type="submit">Re‑calculate</button>
+  <output id="result"></output>
+</form>
+
+<footer>
+  Crafted for mobile • Uses metric units • v2025‑04
+</footer>
+
+<script>
+const cWater = 4186;
+const cCeramic = 880;
+
+function fmtTime(sec){
+  sec = Math.round(sec);
+  const m = Math.floor(sec/60);
+  const s = sec % 60;
+  return (m>0? m+" min ":"") + s+" s";
+}
+
+function compute(){
+  const T0=parseFloat(startTemp.value);
+  const Tt=parseFloat(targetTemp.value);
+  startVal.textContent = T0.toFixed(1)+" °C";
+  targetVal.textContent = Tt.toFixed(1)+" °C";
+  if(Tt<=T0){
+    result.textContent="Target must exceed start.";
+    return;
+  }
+  const dT=Tt-T0;
+  const mWater=parseFloat(waterMass.value)/1000;
+  const mMug=parseFloat(mugMass.value)/1000;
+  const P=parseFloat(power.value);
+  const Q=dT*(mWater*cWater + mMug*cCeramic);
+  const t=Q/P;
+  result.textContent="Heat about "+fmtTime(t);
+}
+
+startTemp.addEventListener("input", compute);
+targetTemp.addEventListener("input", compute);
+document.getElementById("calcForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  compute();
+});
+
+// initial calc with defaults
+compute();
+</script>
+</body>
+</html>
