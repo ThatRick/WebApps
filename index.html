@@ -3,184 +3,220 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Time Calculator – live sim</title>
+<title>Microwave Timer – minimalist edition</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
-  --accent:#0b7dda;
-  --bg:#f9f9f9;
-  --text:#202124;
-  --muted:#646a70;
-  --radius:12px;
-  --space:clamp(0.75rem,2vw,1.2rem);
+  --accent:#0366d6;
+  --bg:#fcfcfc;
+  --card:#ffffff;
+  --text:#222;
+  --muted:#666;
+  --radius:14px;
+  --space:clamp(0.8rem,2.5vw,1.3rem);
+  --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--bg);
   color:var(--text);
   padding:var(--space);
-  line-height:1.5;
+  display:flex;
+  flex-direction:column;
 }
-header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
-h1{font-size:clamp(1.4rem,4vw,1.8rem);font-weight:600;}
-h1 small{display:block;font-size:0.75em;font-weight:400;color:var(--muted);}
-form{
-  background:#fff;
+header{
+  text-align:center;
+  margin-bottom:clamp(1.2rem,4vw,2rem);
+}
+h1{
+  font-size:clamp(1.5rem,4vw,1.9rem);
+  font-weight:600;
+  letter-spacing:-0.2px;
+}
+h1 small{
+  display:block;
+  font-size:0.78em;
+  font-weight:400;
+  color:var(--muted);
+}
+#card{
+  background:var(--card);
   padding:var(--space);
   border-radius:var(--radius);
-  box-shadow:0 4px 12px rgba(0,0,0,0.06);
+  box-shadow:0 6px 16px rgba(0,0,0,0.05);
+  flex:1 0 auto;
 }
 .field{margin-top:var(--space);}
-label{font-size:0.95rem;display:block;margin-bottom:0.25rem;}
-input[type=range]{width:100%;margin:0.25rem 0;}
+label{font-size:0.95rem;display:block;margin-bottom:0.2rem;}
+input[type=range]{width:100%;margin:0.3rem 0;}
 .value-display{font-weight:600;margin-left:0.4rem;}
 details{margin-top:var(--space);border-top:1px dashed #dcdcdc;padding-top:var(--space);}
 summary{cursor:pointer;font-weight:500;color:var(--accent);list-style:none;}
 input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #d0d0d0;border-radius:var(--radius);width:100%;margin-top:0.25rem;}
 input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);}
-button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:0.8rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
-button:active{transform:translateY(1px);}
-output{display:block;margin-top:var(--space);font-size:1.2rem;font-weight:600;text-align:center;}
-#liveBox{
-  margin-top:var(--space);
-  background:#eef4ff;
-  padding:0.6rem 0.8rem;
+button{
+  width:100%;
+  background:var(--accent);
+  color:#fff;
+  border:none;
   border-radius:var(--radius);
-  text-align:center;
-  font-weight:500;
+  padding:0.85rem;
   font-size:1.05rem;
-  display:none;
+  font-weight:600;
+  margin-top:var(--space);
 }
-footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.75rem;color:var(--muted);}
+button:active{transform:translateY(1px);}
+#info{display:block;margin-top:var(--space);font-size:1.1rem;text-align:center;font-family:var(--mono);}
+#tempBox{
+  margin-top:0.6rem;
+  text-align:center;
+  font-size:1rem;
+  font-weight:500;
+  color:var(--muted);
+  font-family:var(--mono);
+}
+footer{
+  text-align:center;
+  margin-top:clamp(2rem,5vw,3rem);
+  font-size:0.8rem;
+  color:var(--muted);
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Time Calculator<small>loss‑aware with live curve</small></h1>
+  <h1>Microwave Timer<small>loss‑aware, artfully minimal</small></h1>
 </header>
 
+<div id="card">
 <form id="calcForm">
   <div class="field">
-    <label for="startTemp">Start temperature: <span id="startVal" class="value-display">13 °C</span></label>
+    <label>Start temperature <span id="startVal" class="value-display">13 °C</span></label>
     <input type="range" id="startTemp" min="5" max="20" step="0.1" value="13">
   </div>
   <div class="field">
-    <label for="targetTemp">Target temperature: <span id="targetVal" class="value-display">80 °C</span></label>
+    <label>Target temperature <span id="targetVal" class="value-display">80 °C</span></label>
     <input type="range" id="targetTemp" min="75" max="90" step="0.1" value="80">
   </div>
 
   <details>
-    <summary>Advanced settings</summary>
-    <label>
-      Water mass (g)
+    <summary>Advanced</summary>
+    <label>Water mass (g)
       <input type="number" id="waterMass" value="303" step="1">
     </label>
-    <label>
-      Mug mass (g)
+    <label>Mug mass (g)
       <input type="number" id="mugMass" value="250" step="1">
     </label>
-    <label>
-      Power delivered at room temp (W) 
+    <label>Power at room temp P₀ (W)
       <input type="number" id="power0" value="600" step="10">
     </label>
-    <label>
-      Loss constant hA (W / °C) 
+    <label>Loss constant hA (W / °C)
       <input type="number" id="heatLoss" value="1.1" step="0.1">
     </label>
-    <label>
-      Room temperature (°C)
+    <label>Room temperature (°C)
       <input type="number" id="roomTemp" value="22" step="0.1">
     </label>
   </details>
 
-  <button type="submit">Re‑calculate</button>
+  <button type="submit">Update prediction</button>
   <button type="button" id="startBtn">Start timer</button>
-  <output id="result"></output>
-  <div id="liveBox">Current temp: <span id="liveTemp">–</span></div>
-</form>
 
-<footer>
-  Crafted for mobile • Uses metric units • v2025‑04‑live
-</footer>
+  <output id="info"></output>
+  <div id="tempBox"></div>
+</form>
+</div>
+
+<footer>© 2025 • Metric units • Crafted for touch</footer>
 
 <script>
-const cWater = 4186;
-const cCeramic = 880;
-let simInterval = null;
-let simStartTime = null;
-let simDuration = 0;
-let simParams = {};
+/* constants */
+const cW=4186, cC=880;
+let interval=null, sim=null;
 
-function fmtTime(sec){
-  if(!isFinite(sec)||sec<0)return "–";
-  sec = Math.round(sec);
-  const m = Math.floor(sec/60);
-  const s = sec % 60;
-  return (m>0? m+" min ":"") + s+" s";
+/* helpers */
+const $=id=>document.getElementById(id);
+const mono = v=>`<span style="font-family:var(--mono)">${v}</span>`;
+function fmtTime(s){
+  s=Math.max(0,Math.round(s));
+  const m=Math.floor(s/60), sec=s%60;
+  return (m?m+":":"")+sec.toString().padStart(2,"0")+" s";
 }
 
-function compute(onlyTime=false){
-  const T0=parseFloat(startTemp.value);
-  const Tt=parseFloat(targetTemp.value);
-  startVal.textContent = T0.toFixed(1)+" °C";
-  targetVal.textContent = Tt.toFixed(1)+" °C";
+/* core calc */
+function getParams(){
+  const T0=parseFloat(startTemp.value),
+        Tt=parseFloat(targetTemp.value),
+        mW=parseFloat(waterMass.value)/1000,
+        mM=parseFloat(mugMass.value)/1000,
+        P0=parseFloat(power0.value),
+        hA=parseFloat(heatLoss.value),
+        Ta=parseFloat(roomTemp.value);
+  const MC = mW*cW + mM*cC;
+  return {T0,Tt,P0,hA,Ta,MC};
+}
 
-  const mWater=parseFloat(waterMass.value)/1000;
-  const mMug=parseFloat(mugMass.value)/1000;
-  const P0=parseFloat(power0.value);
-  const hA=parseFloat(heatLoss.value);
-  const Tamb=parseFloat(roomTemp.value);
+function predictTime(p){
+  if(p.Tt<=p.T0) return null;
+  if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
+  const num = p.P0 - p.hA*(p.T0-p.Ta);
+  const den = p.P0 - p.hA*(p.Tt-p.Ta);
+  return (p.MC/p.hA)*Math.log(num/den);
+}
 
-  if(Tt<=T0){ result.textContent="Target must exceed start."; return null; }
-  if(P0<=hA*(Tt-Tamb)){ result.textContent="P₀ too low (would never reach target)."; return null; }
-
-  const MC = mWater*cWater + mMug*cCeramic;
-  const num = P0 - hA*(T0 - Tamb);
-  const den = P0 - hA*(Tt - Tamb);
-  const t = (MC/hA)*Math.log(num/den);
-  if(!onlyTime){
-    result.textContent = "Heat about "+fmtTime(t);
+function updateDisplay(){
+  $('startVal').textContent=parseFloat(startTemp.value).toFixed(1)+" °C";
+  $('targetVal').textContent=parseFloat(targetTemp.value).toFixed(1)+" °C";
+  const p=getParams();
+  const t=predictTime(p);
+  if(!isFinite(t)){
+    $('info').innerHTML="Target unreachable with current settings.";
+  }else{
+    $('info').innerHTML="Estimated heat time : "+mono(fmtTime(t));
   }
-  return {T0,Tt,MC,P0,hA,Tamb,time:t};
+  $('tempBox').textContent="";
 }
 
-function startSim(){
-  const p = compute(true);
-  if(!p){return;}
-  // avoid multiple intervals
-  clearInterval(simInterval);
-  simParams = p;
-  simStartTime = Date.now();
-  simDuration = p.time*1000;
-  liveBox.style.display = "block";
-  liveTemp.textContent = p.T0.toFixed(1)+" °C";
-  startBtn.disabled = true;
-  simInterval = setInterval(()=>{
-    const elapsed = (Date.now()-simStartTime)/1000;
-    // Newton solution: T(t)=Tamb + P0/hA - (P0/hA - (T0 - Tamb))*exp(-hA t / MC)
-    const {T0,MC,P0,hA,Tamb,Tt} = simParams;
-    const Ts = Tamb + P0/hA;
-    const T = Tamb + (P0/hA) - (P0/hA - (T0 - Tamb))*Math.exp(-hA*elapsed/MC);
-    liveTemp.textContent = T.toFixed(1)+" °C (+"+elapsed.toFixed(0)+" s)";
-    if(T>=Tt || elapsed*1000>=simDuration+1000){
-      clearInterval(simInterval);
-      liveTemp.textContent = Tt.toFixed(1)+" °C – done!";
-      startBtn.disabled = false;
-    }
-  }, 500);
+/* live sim */
+function startTimer(){
+  const p=getParams();
+  const tTotal=predictTime(p);
+  if(!isFinite(tTotal)) return;
+  clearInterval(interval);
+  sim={p,start:Date.now(),tTotal};
+  $('startBtn').disabled=true;
+  interval=setInterval(tick,1000);
+  tick();
 }
 
-startTemp.addEventListener("input", ()=>{compute();});
-targetTemp.addEventListener("input", ()=>{compute();});
-document.getElementById("calcForm").addEventListener("submit", e=>{
-  e.preventDefault();
-  compute();
-});
-document.getElementById("startBtn").addEventListener("click", startSim);
+function tick(){
+  const now=Date.now();
+  const {p,start,tTotal}=sim;
+  const elapsed=(now-start)/1000;
+  const remaining=Math.max(0,tTotal-elapsed);
+  /* Newton solution for temperature */
+  const Ts=p.Ta+p.P0/p.hA;
+  const T=p.Ta+p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
 
-// initial
-compute();
+  $('info').innerHTML="Time remaining : "+mono(fmtTime(remaining));
+  $('tempBox').textContent="Predicted "+T.toFixed(1)+" °C";
+
+  if(remaining<=0){
+    clearInterval(interval);
+    $('info').innerHTML="Done!";
+    $('tempBox').textContent="Reached "+p.Tt.toFixed(1)+" °C";
+    $('startBtn').disabled=false;
+  }
+}
+
+/* wire events */
+[startTemp,targetTemp].forEach(el=>el.addEventListener("input",updateDisplay));
+$('calcForm').addEventListener("submit",e=>{e.preventDefault();updateDisplay();});
+$('startBtn').addEventListener("click",startTimer);
+
+/* initial */
+updateDisplay();
 </script>
 </body>
 </html>
