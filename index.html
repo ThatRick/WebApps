@@ -3,15 +3,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – chime + streamlined</title>
+<title>Microwave Timer – dark & flashing</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
-  --accent:#0366d6;
-  --bg:#fcfcfc;
-  --card:#ffffff;
-  --text:#222;
-  --muted:#666;
+  --accent:#00d06c;          /* neon green */
+  --bg:#000000;
+  --card:#111;
+  --text:#eaeaea;
+  --muted:#7a7a7a;
   --radius:14px;
   --space:clamp(0.8rem,2.5vw,1.3rem);
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
@@ -24,32 +24,34 @@ body{
   padding:var(--space);
   display:flex;
   flex-direction:column;
+  transition:background-color 0.25s;
 }
+body.flash-green{background:#00d06c;}
 header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
 h1{font-size:clamp(1.5rem,4vw,1.9rem);font-weight:600;letter-spacing:-0.2px;}
 h1 small{display:block;font-size:0.78em;font-weight:400;color:var(--muted);}
 #card{background:var(--card);padding:var(--space);border-radius:var(--radius);
-      box-shadow:0 6px 16px rgba(0,0,0,0.05);flex:1 0 auto;}
+      box-shadow:0 6px 16px rgba(0,0,0,0.3);flex:1 0 auto;}
 .field{margin-top:var(--space);}
-label{font-size:0.95rem;display:block;margin-bottom:0.2rem;}
+label{font-size:0.95rem;display:block;margin-bottom:0.2rem;color:var(--muted);}
 input[type=range]{width:100%;margin:0.3rem 0;}
-.value-display{font-weight:600;margin-left:0.4rem;}
-details{margin-top:var(--space);border-top:1px dashed #dcdcdc;padding-top:var(--space);}
+.value-display{font-weight:600;margin-left:0.4rem;color:var(--text);}
+details{margin-top:var(--space);border-top:1px dashed #333;padding-top:var(--space);}
 summary{cursor:pointer;font-weight:500;color:var(--accent);list-style:none;}
-input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #d0d0d0;border-radius:var(--radius);width:100%;margin-top:0.25rem;}
-input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);}
-button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:0.85rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
+input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #333;border-radius:var(--radius);width:100%;margin-top:0.25rem;background:#000;color:var(--text);}
+input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,208,108,0.35);}
+button{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--radius);padding:0.85rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
 button:active{transform:translateY(1px);}
 #info{
   display:block;margin-top:var(--space);
-  font-size:1.7rem; /* bigger font */
+  font-size:2.4rem;
   text-align:center;
   font-family:var(--mono);
 }
 #tempBox{
-  margin-top:0.4rem;
+  margin-top:0.2rem;
   text-align:center;
-  font-size:1.1rem;
+  font-size:1.7rem;
   font-weight:500;
   color:var(--muted);
   font-family:var(--mono);
@@ -59,7 +61,7 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>audible chime • minimalist</small></h1>
+  <h1>Microwave Timer<small>dark • single‑tap</small></h1>
 </header>
 
 <div id="card">
@@ -92,62 +94,54 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
     </label>
   </details>
 
-  <button type="button" id="startBtn">Start timer</button>
+  <button type="button" id="startBtn">Start</button>
 
   <output id="info"></output>
   <div id="tempBox"></div>
 </form>
 </div>
 
-<footer>© 2025 • Metric units</footer>
+<footer>tap anywhere to stop flashing</footer>
 
 <script>
-/* constants */
-const cW=4186, cC=880;
-let interval=null, sim=null;
-
-/* chime */
+const cW=4186,cC=880;
+let interval=null,sim=null,flashInt=null;
 function playChime(){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type="sine"; o.frequency.value=1047;
+  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="sine";o.frequency.value=1047;
   g.gain.setValueAtTime(0.001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.25,ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.9);
-  o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1);
+  g.gain.exponentialRampToValueAtTime(0.4,ctx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.1);
+  o.connect(g).connect(ctx.destination);
+  o.start();o.stop(ctx.currentTime+1.2);
 }
-
-/* helper */
 const $=id=>document.getElementById(id);
 const mono=v=>`<span style="font-family:var(--mono)">${v}</span>`;
-function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0")+" s";}
-
-/* calcs */
+function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0");}
 function getParams(){
   const T0=parseFloat(startTemp.value),Tt=parseFloat(targetTemp.value);
   const mW=parseFloat(waterMass.value)/1000,mM=parseFloat(mugMass.value)/1000;
   const P0=parseFloat(power0.value),hA=parseFloat(heatLoss.value),Ta=parseFloat(roomTemp.value);
-  return {T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
+  return{T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
 }
 function predictTime(p){
-  if(p.Tt<=p.T0) return null;
-  if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
+  if(p.Tt<=p.T0)return null;
+  if(p.P0<=p.hA*(p.Tt-p.Ta))return Infinity;
   const num=p.P0-p.hA*(p.T0-p.Ta),den=p.P0-p.hA*(p.Tt-p.Ta);
-  return (p.MC/p.hA)*Math.log(num/den);
+  return(p.MC/p.hA)*Math.log(num/den);
 }
 function updateDisplay(){
   $('startVal').textContent=parseFloat(startTemp.value).toFixed(1)+" °C";
   $('targetVal').textContent=parseFloat(targetTemp.value).toFixed(1)+" °C";
-  const p=getParams(),t=predictTime(p);
-  $('info').innerHTML=!isFinite(t)?"Target unreachable": "Estimated time: "+mono(fmtTime(t));
+  const t=predictTime(getParams());
+  $('info').innerHTML=isFinite(t)?mono(fmtTime(t))+" s":"∞";
   $('tempBox').textContent="";
 }
-
-/* live timer */
 function startTimer(){
-  const p=getParams();
-  const tTotal=predictTime(p);
-  if(!isFinite(tTotal)) return;
+  stopFlash();
+  const p=getParams();const tTotal=predictTime(p);
+  if(!isFinite(tTotal))return;
   clearInterval(interval);
   sim={p,start:Date.now(),tTotal};
   $('startBtn').disabled=true;
@@ -156,24 +150,34 @@ function startTimer(){
 }
 function tick(){
   const {p,start,tTotal}=sim;
-  const elapsed=(Date.now()-start)/1000,remaining=Math.max(0,tTotal-elapsed);
+  const elapsed=(Date.now()-start)/1000,rem=Math.max(0,tTotal-elapsed);
   const T=p.Ta+p.P0/p.hA-(p.P0/p.hA-(p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-  $('info').innerHTML="Remaining: "+mono(fmtTime(remaining));
-  $('tempBox').textContent="Predicted "+T.toFixed(1)+" °C";
-  if(remaining<=0){
+  $('info').innerHTML=mono(fmtTime(rem))+" s";
+  $('tempBox').textContent=T.toFixed(1)+" °C";
+  if(rem<=0){
     clearInterval(interval);
-    $('info').innerHTML="Done!";
-    $('tempBox').textContent="Reached "+p.Tt.toFixed(1)+" °C";
+    $('info').innerHTML="0 s";
+    $('tempBox').textContent=p.Tt.toFixed(1)+" °C";
     $('startBtn').disabled=false;
     playChime();
+    beginFlash();
   }
 }
-
-/* events */
+/* flashing */
+function beginFlash(){
+  let on=false;
+  flashInt=setInterval(()=>{
+    on=!on;
+    document.body.classList.toggle('flash-green',on);
+  },500); // toggle every 0.5 s => 1 Hz cycle
+}
+function stopFlash(){
+  clearInterval(flashInt);
+  document.body.classList.remove('flash-green');
+}
+document.body.addEventListener('click',stopFlash);
 [startTemp,targetTemp].forEach(el=>el.addEventListener("input",updateDisplay));
 $('startBtn').addEventListener("click",startTimer);
-
-/* initial */
 updateDisplay();
 </script>
 </body>
