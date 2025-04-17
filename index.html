@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Time Calculator – loss‑aware</title>
+<title>Microwave Time Calculator – live sim</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
@@ -42,12 +42,22 @@ input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:0.8rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
 button:active{transform:translateY(1px);}
 output{display:block;margin-top:var(--space);font-size:1.2rem;font-weight:600;text-align:center;}
+#liveBox{
+  margin-top:var(--space);
+  background:#eef4ff;
+  padding:0.6rem 0.8rem;
+  border-radius:var(--radius);
+  text-align:center;
+  font-weight:500;
+  font-size:1.05rem;
+  display:none;
+}
 footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.75rem;color:var(--muted);}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Time Calculator<small>loss‑aware model</small></h1>
+  <h1>Microwave Time Calculator<small>loss‑aware with live curve</small></h1>
 </header>
 
 <form id="calcForm">
@@ -71,11 +81,11 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.75rem;color
       <input type="number" id="mugMass" value="250" step="1">
     </label>
     <label>
-      Power delivered at room temp&nbsp;(W) 
+      Power delivered at room temp (W) 
       <input type="number" id="power0" value="600" step="10">
     </label>
     <label>
-      Loss constant hA (W / °C) <small>(typ. 1 – 2)</small>
+      Loss constant hA (W / °C) 
       <input type="number" id="heatLoss" value="1.1" step="0.1">
     </label>
     <label>
@@ -85,16 +95,22 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.75rem;color
   </details>
 
   <button type="submit">Re‑calculate</button>
+  <button type="button" id="startBtn">Start timer</button>
   <output id="result"></output>
+  <div id="liveBox">Current temp: <span id="liveTemp">–</span></div>
 </form>
 
 <footer>
-  Crafted for mobile • Uses metric units • v2025‑04‑loss
+  Crafted for mobile • Uses metric units • v2025‑04‑live
 </footer>
 
 <script>
 const cWater = 4186;
 const cCeramic = 880;
+let simInterval = null;
+let simStartTime = null;
+let simDuration = 0;
+let simParams = {};
 
 function fmtTime(sec){
   if(!isFinite(sec)||sec<0)return "–";
@@ -104,7 +120,7 @@ function fmtTime(sec){
   return (m>0? m+" min ":"") + s+" s";
 }
 
-function compute(){
+function compute(onlyTime=false){
   const T0=parseFloat(startTemp.value);
   const Tt=parseFloat(targetTemp.value);
   startVal.textContent = T0.toFixed(1)+" °C";
@@ -116,24 +132,52 @@ function compute(){
   const hA=parseFloat(heatLoss.value);
   const Tamb=parseFloat(roomTemp.value);
 
-  if(Tt<=T0){result.textContent="Target must exceed start.";return;}
-  if(P0<=hA*(Tt-Tamb)){result.textContent="P₀ too low for this target (would never reach).";return;}
+  if(Tt<=T0){ result.textContent="Target must exceed start."; return null; }
+  if(P0<=hA*(Tt-Tamb)){ result.textContent="P₀ too low (would never reach target)."; return null; }
 
   const MC = mWater*cWater + mMug*cCeramic;
-
   const num = P0 - hA*(T0 - Tamb);
   const den = P0 - hA*(Tt - Tamb);
   const t = (MC/hA)*Math.log(num/den);
-
-  result.textContent = "Heat about "+fmtTime(t);
+  if(!onlyTime){
+    result.textContent = "Heat about "+fmtTime(t);
+  }
+  return {T0,Tt,MC,P0,hA,Tamb,time:t};
 }
 
-startTemp.addEventListener("input", compute);
-targetTemp.addEventListener("input", compute);
+function startSim(){
+  const p = compute(true);
+  if(!p){return;}
+  // avoid multiple intervals
+  clearInterval(simInterval);
+  simParams = p;
+  simStartTime = Date.now();
+  simDuration = p.time*1000;
+  liveBox.style.display = "block";
+  liveTemp.textContent = p.T0.toFixed(1)+" °C";
+  startBtn.disabled = true;
+  simInterval = setInterval(()=>{
+    const elapsed = (Date.now()-simStartTime)/1000;
+    // Newton solution: T(t)=Tamb + P0/hA - (P0/hA - (T0 - Tamb))*exp(-hA t / MC)
+    const {T0,MC,P0,hA,Tamb,Tt} = simParams;
+    const Ts = Tamb + P0/hA;
+    const T = Tamb + (P0/hA) - (P0/hA - (T0 - Tamb))*Math.exp(-hA*elapsed/MC);
+    liveTemp.textContent = T.toFixed(1)+" °C (+"+elapsed.toFixed(0)+" s)";
+    if(T>=Tt || elapsed*1000>=simDuration+1000){
+      clearInterval(simInterval);
+      liveTemp.textContent = Tt.toFixed(1)+" °C – done!";
+      startBtn.disabled = false;
+    }
+  }, 500);
+}
+
+startTemp.addEventListener("input", ()=>{compute();});
+targetTemp.addEventListener("input", ()=>{compute();});
 document.getElementById("calcForm").addEventListener("submit", e=>{
   e.preventDefault();
   compute();
 });
+document.getElementById("startBtn").addEventListener("click", startSim);
 
 // initial
 compute();
