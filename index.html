@@ -11,9 +11,9 @@
   --card:#161616;
   --text:#e8e8e8;
   --muted:#7a7a7a;
-  --track:#2b2b2b;
-  --fill-start:#00b9ff;
-  --fill-end:#00d06c;
+  --track:#1f1f1f;
+  --fill-start:#005f99;
+  --fill-end:#008644;
   --radius:14px;
   --space:clamp(0.9rem,3vw,1.4rem);
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
@@ -138,7 +138,12 @@ function loadSettings(){
   if(d.room) roomTemp.value=d.room;
 }
 const $=id=>document.getElementById(id);
-function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0");}
+function fmtTime(s){
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s/60), sec = s % 60;
+  if (m === 0) return sec.toString();
+  return m + ":" + sec.toString().padStart(2, "0");
+}
 function getParams(){
   const T0=+startTemp.value,Tt=+targetTemp.value;
   const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
