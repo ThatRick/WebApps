@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – morphing progress</title>
+<title>Microwave Timer – saved settings</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
@@ -90,7 +90,7 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>morphing progress bar</small></h1>
+  <h1>Microwave Timer<small>persists your settings</small></h1>
 </header>
 
 <div id="card">
@@ -134,17 +134,52 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
 <footer>tap anywhere to stop flashing</footer>
 
 <script>
+const SETTINGS_KEY="microwaveTimerSettings";
 const cW=4186,cC=880;
 let interval=null,sim=null,flashInt=null;
+
+/* --- persistence --- */
+function saveSettings(){
+  const data={
+    start:+startTemp.value,
+    target:+targetTemp.value,
+    water:+waterMass.value,
+    mug:+mugMass.value,
+    P0:+power0.value,
+    hA:+heatLoss.value,
+    room:+roomTemp.value
+  };
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify(data));
+}
+function loadSettings(){
+  const json=localStorage.getItem(SETTINGS_KEY);
+  if(!json)return;
+  try{
+    const d=JSON.parse(json);
+    if(d.start)startTemp.value=d.start;
+    if(d.target)targetTemp.value=d.target;
+    if(d.water)waterMass.value=d.water;
+    if(d.mug)mugMass.value=d.mug;
+    if(d.P0)power0.value=d.P0;
+    if(d.hA)heatLoss.value=d.hA;
+    if(d.room)roomTemp.value=d.room;
+  }catch(e){}
+}
+
+/* --- audio --- */
 function playChime(){
   const ctx=new(window.AudioContext||window.webkitAudioContext)();
   const o=ctx.createOscillator(),g=ctx.createGain();
   o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
   o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
 }
+
+/* helpers */
 const $=id=>document.getElementById(id);
 const mono=v=>`<span style="font-family:var(--mono)">${v}</span>`;
 function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0");}
+
+/* model */
 function getParams(){
   const T0=+startTemp.value,Tt=+targetTemp.value;
   const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
@@ -156,6 +191,8 @@ function predictTime(p){
   if(p.P0<=p.hA*(p.Tt-p.Ta))return Infinity;
   return(p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
 }
+
+/* UI */
 function updateDisplay(){
   $('startVal').textContent=(+startTemp.value).toFixed(1)+" °C";
   $('targetVal').textContent=(+targetTemp.value).toFixed(1)+" °C";
@@ -165,6 +202,7 @@ function updateDisplay(){
   $('startBtn').style.display='block';
   $('progressWrap').style.display='none';
   $('progressBar').style.width='0%';
+  saveSettings();
 }
 function startTimer(){
   stopFlash();
@@ -190,6 +228,8 @@ function tick(){
     playChime();beginFlash();
   }
 }
+
+/* flashing */
 function beginFlash(){
   let on=false;
   flashInt=setInterval(()=>{on=!on;document.body.classList.toggle('flash-green',on);},500);
@@ -198,9 +238,17 @@ function stopFlash(){
   clearInterval(flashInt);
   document.body.classList.remove('flash-green');
 }
+
+/* events */
 document.body.addEventListener('click',stopFlash);
-[startTemp,targetTemp].forEach(el=>el.addEventListener('input',updateDisplay));
+[startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
+  el.addEventListener('input',updateDisplay);
+  el.addEventListener('change',updateDisplay);
+});
 $('startBtn').addEventListener('click',startTimer);
+
+/* init */
+loadSettings();
 updateDisplay();
 </script>
 </body>
