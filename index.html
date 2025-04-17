@@ -3,17 +3,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – dark & flashing</title>
+<title>Microwave Timer – dark + progress</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
   --accent:#00d06c;          /* neon green */
-  --bg:#000000;
+  --bg:#000;
   --card:#111;
   --text:#eaeaea;
   --muted:#7a7a7a;
   --radius:14px;
-  --space:clamp(0.8rem,2.5vw,1.3rem);
+  --space:clamp(0.9rem,3vw,1.4rem);
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -28,30 +28,61 @@ body{
 }
 body.flash-green{background:#00d06c;}
 header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
-h1{font-size:clamp(1.5rem,4vw,1.9rem);font-weight:600;letter-spacing:-0.2px;}
+h1{font-size:clamp(1.6rem,4vw,2rem);font-weight:600;letter-spacing:-0.2px;}
 h1 small{display:block;font-size:0.78em;font-weight:400;color:var(--muted);}
-#card{background:var(--card);padding:var(--space);border-radius:var(--radius);
-      box-shadow:0 6px 16px rgba(0,0,0,0.3);flex:1 0 auto;}
+#progressWrap{
+  height:10px;
+  background:#333;
+  border-radius:8px;
+  overflow:hidden;
+  margin-bottom:var(--space);
+  display:none;
+}
+#progressBar{
+  height:100%;
+  width:0%;
+  background:var(--accent);
+  transition:width 1s linear;
+}
+#card{
+  background:var(--card);
+  padding:var(--space);
+  border-radius:var(--radius);
+  box-shadow:0 6px 18px rgba(0,0,0,0.35);
+  flex:1 0 auto;
+}
 .field{margin-top:var(--space);}
-label{font-size:0.95rem;display:block;margin-bottom:0.2rem;color:var(--muted);}
-input[type=range]{width:100%;margin:0.3rem 0;}
-.value-display{font-weight:600;margin-left:0.4rem;color:var(--text);}
+label{font-size:1.05rem;display:block;margin-bottom:0.25rem;color:var(--muted);}
+input[type=range]{width:100%;margin:0.35rem 0;appearance:none;height:6px;background:#333;border-radius:4px;outline:none;}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:0;}
+.value-display{font-weight:600;margin-left:0.4rem;color:var(--text);font-size:1.5rem;}
 details{margin-top:var(--space);border-top:1px dashed #333;padding-top:var(--space);}
 summary{cursor:pointer;font-weight:500;color:var(--accent);list-style:none;}
 input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #333;border-radius:var(--radius);width:100%;margin-top:0.25rem;background:#000;color:var(--text);}
 input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,208,108,0.35);}
-button{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--radius);padding:0.85rem;font-size:1.05rem;font-weight:600;margin-top:var(--space);}
-button:active{transform:translateY(1px);}
+button#startBtn{
+  width:100%;
+  background:var(--accent);
+  color:#000;
+  border:none;
+  border-radius:var(--radius);
+  padding:1rem;
+  font-size:1.2rem;
+  font-weight:600;
+  margin-top:var(--space);
+  transition:opacity 0.2s;
+}
+button#startBtn.running{opacity:0;pointer-events:none;}
 #info{
   display:block;margin-top:var(--space);
-  font-size:2.4rem;
+  font-size:2.6rem;
   text-align:center;
   font-family:var(--mono);
 }
 #tempBox{
-  margin-top:0.2rem;
+  margin-top:0.25rem;
   text-align:center;
-  font-size:1.7rem;
+  font-size:1.8rem;
   font-weight:500;
   color:var(--muted);
   font-family:var(--mono);
@@ -61,26 +92,27 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>dark • single‑tap</small></h1>
+  <h1>Microwave Timer<small>dark • progress bar</small></h1>
+  <div id="progressWrap"><div id="progressBar"></div></div>
 </header>
 
 <div id="card">
 <form id="calcForm">
   <div class="field">
-    <label>Start temperature <span id="startVal" class="value-display">13 °C</span></label>
+    <label>Start <span id="startVal" class="value-display">13 °C</span></label>
     <input type="range" id="startTemp" min="5" max="20" step="0.1" value="13">
   </div>
   <div class="field">
-    <label>Target temperature <span id="targetVal" class="value-display">80 °C</span></label>
+    <label>Target <span id="targetVal" class="value-display">80 °C</span></label>
     <input type="range" id="targetTemp" min="75" max="90" step="1" value="80">
   </div>
 
   <details>
     <summary>Advanced</summary>
-    <label>Water mass (g)
+    <label>Water mass (g)
       <input type="number" id="waterMass" value="303" step="1">
     </label>
-    <label>Mug mass (g)
+    <label>Mug mass (g)
       <input type="number" id="mugMass" value="250" step="1">
     </label>
     <label>P₀ (W)
@@ -89,12 +121,12 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
     <label>hA (W / °C)
       <input type="number" id="heatLoss" value="1.1" step="0.1">
     </label>
-    <label>Room T (°C)
+    <label>Room T (°C)
       <input type="number" id="roomTemp" value="22" step="0.1">
     </label>
   </details>
 
-  <button type="button" id="startBtn">Start</button>
+  <button type="button" id="startBtn">START</button>
 
   <output id="info"></output>
   <div id="tempBox"></div>
@@ -110,47 +142,51 @@ function playChime(){
   const ctx=new(window.AudioContext||window.webkitAudioContext)();
   const o=ctx.createOscillator(),g=ctx.createGain();
   o.type="sine";o.frequency.value=1047;
-  g.gain.setValueAtTime(0.001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.4,ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.1);
+  g.gain.value=0.3;
   o.connect(g).connect(ctx.destination);
-  o.start();o.stop(ctx.currentTime+1.2);
+  o.start();o.stop(ctx.currentTime+1);
 }
 const $=id=>document.getElementById(id);
 const mono=v=>`<span style="font-family:var(--mono)">${v}</span>`;
 function fmtTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;return(m?m+":":"")+sec.toString().padStart(2,"0");}
 function getParams(){
-  const T0=parseFloat(startTemp.value),Tt=parseFloat(targetTemp.value);
-  const mW=parseFloat(waterMass.value)/1000,mM=parseFloat(mugMass.value)/1000;
-  const P0=parseFloat(power0.value),hA=parseFloat(heatLoss.value),Ta=parseFloat(roomTemp.value);
+  const T0=+startTemp.value,Tt=+targetTemp.value;
+  const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
+  const P0=+power0.value,hA=+heatLoss.value,Ta=+roomTemp.value;
   return{T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
 }
 function predictTime(p){
   if(p.Tt<=p.T0)return null;
   if(p.P0<=p.hA*(p.Tt-p.Ta))return Infinity;
-  const num=p.P0-p.hA*(p.T0-p.Ta),den=p.P0-p.hA*(p.Tt-p.Ta);
-  return(p.MC/p.hA)*Math.log(num/den);
+  const t=(p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
+  return t;
 }
 function updateDisplay(){
-  $('startVal').textContent=parseFloat(startTemp.value).toFixed(1)+" °C";
-  $('targetVal').textContent=parseFloat(targetTemp.value).toFixed(1)+" °C";
+  $('startVal').textContent=(+startTemp.value).toFixed(1)+" °C";
+  $('targetVal').textContent=(+targetTemp.value).toFixed(1)+" °C";
   const t=predictTime(getParams());
-  $('info').innerHTML=isFinite(t)?mono(fmtTime(t))+" s":"∞";
+  $('info').innerHTML=isFinite(t)? mono(fmtTime(t))+" s":"∞";
   $('tempBox').textContent="";
+  document.getElementById('progressWrap').style.display='none';
+  document.getElementById('progressBar').style.width='0%';
+  $('startBtn').classList.remove('running');
 }
 function startTimer(){
   stopFlash();
-  const p=getParams();const tTotal=predictTime(p);
+  const p=getParams(),tTotal=predictTime(p);
   if(!isFinite(tTotal))return;
   clearInterval(interval);
   sim={p,start:Date.now(),tTotal};
-  $('startBtn').disabled=true;
+  $('startBtn').classList.add('running');
+  document.getElementById('progressWrap').style.display='block';
   interval=setInterval(tick,1000);
   tick();
 }
 function tick(){
   const {p,start,tTotal}=sim;
   const elapsed=(Date.now()-start)/1000,rem=Math.max(0,tTotal-elapsed);
+  const progress=100*(elapsed/tTotal);
+  document.getElementById('progressBar').style.width=Math.min(progress,100)+'%';
   const T=p.Ta+p.P0/p.hA-(p.P0/p.hA-(p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
   $('info').innerHTML=mono(fmtTime(rem))+" s";
   $('tempBox').textContent=T.toFixed(1)+" °C";
@@ -158,26 +194,22 @@ function tick(){
     clearInterval(interval);
     $('info').innerHTML="0 s";
     $('tempBox').textContent=p.Tt.toFixed(1)+" °C";
-    $('startBtn').disabled=false;
+    $('startBtn').classList.remove('running');
     playChime();
     beginFlash();
   }
 }
-/* flashing */
 function beginFlash(){
   let on=false;
-  flashInt=setInterval(()=>{
-    on=!on;
-    document.body.classList.toggle('flash-green',on);
-  },500); // toggle every 0.5 s => 1 Hz cycle
+  flashInt=setInterval(()=>{on=!on;document.body.classList.toggle('flash-green',on);},500);
 }
 function stopFlash(){
   clearInterval(flashInt);
   document.body.classList.remove('flash-green');
 }
 document.body.addEventListener('click',stopFlash);
-[startTemp,targetTemp].forEach(el=>el.addEventListener("input",updateDisplay));
-$('startBtn').addEventListener("click",startTimer);
+[startTemp,targetTemp].forEach(el=>el.addEventListener('input',updateDisplay));
+$('startBtn').addEventListener('click',startTimer);
 updateDisplay();
 </script>
 </body>
