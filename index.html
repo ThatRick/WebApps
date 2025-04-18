@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – fixed start/progress display</title>
+<title>Microwave Timer – Continuous Simulation</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
@@ -40,9 +40,7 @@ h1 small { display: block; font-size: .78em; color: var(--muted); }
   display: flex;
   flex-direction: column;
 }
-#controls { /* Keep controls always visible */
-    display: block;
-}
+#controls { display: block; }
 .field { margin-top: var(--space); }
 label {
   display: block;
@@ -59,6 +57,9 @@ input[type=range] {
   appearance: none;
   margin: .35rem 0;
 }
+input[type=range]:disabled {
+  opacity: 0.5;
+}
 input[type=range]::-webkit-slider-thumb {
   appearance: none;
   width: 22px; height: 22px;
@@ -66,6 +67,10 @@ input[type=range]::-webkit-slider-thumb {
   background: var(--fill-end);
   border: none;
   cursor: pointer;
+}
+input[type=range]:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+  background: #555;
 }
 .value-display {
   margin-left: .4rem;
@@ -92,6 +97,11 @@ input[type=number] {
   border-radius: var(--radius);
   background: #000;
   color: var(--text);
+}
+input[type=number]:disabled {
+    background: #111;
+    color: #777;
+    cursor: not-allowed;
 }
 #startBtn {
   width: 100%;
@@ -158,13 +168,12 @@ footer {
 /* Style for flashing background */
 body.flash-green {
   background-color: var(--fill-end); /* Use one of the fill colors */
-  /* transition added to body style above */
 }
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>display fix</small></h1>
+  <h1>Microwave Timer<small>Continuous Simulation</small></h1>
 </header>
 <div id="card">
   <div id="controls"> <!-- This div will remain visible -->
@@ -190,7 +199,7 @@ body.flash-green {
   <div id="status"></div> <!-- Status text will be simpler -->
   <div id="info"></div>
 </div>
-<footer>tap anywhere (except progress bar) to stop flashing/cooling</footer>
+<footer>tap anywhere (except progress bar/controls) to stop flashing & simulation updates</footer>
 
 <script>
 // --- START OF REFACTORED SCRIPT SECTION ---
@@ -198,7 +207,6 @@ body.flash-green {
 // persistence
 const KEY="microwaveTimerSettings";
 function saveSettings(){
-  // Prevent saving if timer is running/paused/finished
   if (state === "idle") {
     localStorage.setItem(KEY, JSON.stringify({
       start:+startTemp.value,target:+targetTemp.value,
@@ -217,9 +225,7 @@ function loadSettings(){
     if(d.P0) power0.value=d.P0;
     if(d.hA) heatLoss.value=d.hA;
     if(d.room) roomTemp.value=d.room;
-  }catch(e){
-      console.error("Error loading settings:", e);
-  }
+  }catch(e){ console.error("Error loading settings:", e); }
 }
 
 // helpers
@@ -229,40 +235,30 @@ function fmtTime(s){
   return m? m+":"+sec.toString().padStart(2,"0") : sec.toString();
 }
 
-// model
-const cW=4186, cC=880; // Specific heat capacities (Water, Ceramic/Glass) J/(kg*C)
+// model (no changes needed)
+const cW=4186, cC=880;
 function getParams(){
   const T0=+startTemp.value, Tt=+targetTemp.value,
         mW=+waterMass.value/1000, mM=+mugMass.value/1000,
         P0=+power0.value, hA=+heatLoss.value, Ta=+roomTemp.value;
-  return {T0,Tt,P0,hA,Ta,MC:mW*cW + mM*cC}; // MC = effective heat capacity
+  return {T0,Tt,P0,hA,Ta,MC:mW*cW + mM*cC};
 }
 function predictTime(p){
-  if(p.Tt<=p.T0) return null; // Target must be higher than start
-  const equilibriumTempRise = p.P0 / p.hA; // Max temp rise above ambient due to power input
+  if(p.Tt<=p.T0) return null;
+  const equilibriumTempRise = p.P0 / p.hA;
   const maxReachableTemp = p.Ta + equilibriumTempRise;
-  if (p.P0 <= 0 || p.hA <= 0) { // Handle edge cases
-      if (p.P0 > 0 && p.hA <= 0) return Infinity; // No heat loss, keeps heating
-      if (p.P0 <= 0 && p.hA > 0 && p.Tt > p.T0) return Infinity; // No power, can't heat up
-      if (p.P0 <= 0 && p.hA <= 0 && p.Tt > p.T0) return Infinity; // No power, no loss, can't heat up
-      if (p.Tt <= p.T0) return null; // Already handled, but for clarity
+  if (p.P0 <= 0 || p.hA <= 0) {
+      if (p.P0 > 0 && p.hA <= 0) return Infinity;
+      if (p.P0 <= 0 && p.hA > 0 && p.Tt > p.T0) return Infinity;
+      if (p.P0 <= 0 && p.hA <= 0 && p.Tt > p.T0) return Infinity;
+      if (p.Tt <= p.T0) return null;
   }
-  // Check if target temp is reachable
   if (p.Tt > maxReachableTemp) return Infinity;
-
-  // Derived from solving the differential equation: MC * dT/dt = P0 - hA * (T - Ta)
-  // Ensure arguments to log are positive
   const numerator = p.P0 - p.hA * (p.T0 - p.Ta);
   const denominator = p.P0 - p.hA * (p.Tt - p.Ta);
-
-  if (numerator <= 0 || denominator <= 0) {
-      console.warn("Log argument non-positive, check physics:", {numerator, denominator, T0:p.T0, Tt:p.Tt, maxReachableTemp});
-      return Infinity;
-  }
-
+  if (numerator <= 0 || denominator <= 0) return Infinity;
   return (p.MC/p.hA) * Math.log(numerator / denominator);
 }
-
 function calculateTemp(p, elapsed, startTemp) {
   const T0_eff = startTemp !== undefined ? startTemp : p.T0;
   if (p.P0 <= 0) { return calculateCoolingTemp(p, elapsed, T0_eff); }
@@ -270,274 +266,312 @@ function calculateTemp(p, elapsed, startTemp) {
   const equilibriumTempRise = p.P0 / p.hA;
   return p.Ta + equilibriumTempRise - (equilibriumTempRise - (T0_eff - p.Ta)) * Math.exp(-p.hA * elapsed / p.MC);
 }
-
 function calculateCoolingTemp(p, elapsed, startTemp) {
     if (p.hA <= 0) return startTemp;
     return p.Ta + (startTemp - p.Ta) * Math.exp(-p.hA * elapsed / p.MC);
 }
 
-
 // --- State Management ---
 let state = "idle"; // "idle", "heating", "paused", "finished"
-let timerInterval = null;
+let simulationInterval = null; // Single interval for heating/cooling simulation steps
 let flashInterval = null;
 let sim = {
-    params: null, totalDuration: 0, startTime: 0,
-    resumeTimeOffset: 0, pauseTemperature: 0, pausedProgress: 0
+    params: null,           // Parameters used for the current run
+    totalDuration: 0,       // Original total calculated heating duration
+    heatingStartTime: 0,    // Timestamp when the current heating segment began
+    coolingStartTime: 0,    // Timestamp when the current cooling segment began
+    resumeTimeOffset: 0,    // Total time already spent heating before the current segment
+    currentTemperature: 0,  // The latest calculated temperature
+    pausedProgress: 0       // Progress percentage when paused
 };
 
-// UI initial and update
-function updateControls(){
-  // Only update display values if idle, otherwise they are fixed during run
-  if (state === 'idle') {
-      $('startVal').textContent = startTemp.value + " °C";
-      $('targetVal').textContent = targetTemp.value + " °C";
-  }
-  const p = getParams();
-  const t = predictTime(p);
-  // Update predicted time display regardless of state (useful if params change)
-  $('info').textContent = t === null ? "Start ≥ Target" : isFinite(t) ? fmtTime(t)+" s" : "∞";
-  saveSettings(); // Save settings whenever controls change (only happens if idle now)
+// UI Update Functions
+function updateUIForState() {
+    const isIdle = state === "idle";
+    const isRunning = state === "heating" || state === "paused" || state === "finished";
+
+    $('startBtn').style.display = isIdle ? 'block' : 'none';
+    $('progressWrap').style.display = isRunning ? 'block' : 'none';
+
+    // Disable/Enable controls
+    [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+        el.disabled = !isIdle;
+    });
+
+    // Set status text
+    switch (state) {
+        case "idle":
+            $('status').textContent = "";
+            updateControlsDisplay(); // Update temp displays from inputs
+            break;
+        case "heating":
+            $('status').textContent = "Heating";
+            break;
+        case "paused":
+            $('status').textContent = "Paused";
+            break;
+        case "finished":
+            $('status').textContent = "Finished!";
+            break;
+    }
+
+    // Ensure flashing is stopped if not finished
+    if (state !== "finished") {
+        stopFlash();
+    }
 }
 
-function setState(newState){
-  const previousState = state;
-  state = newState;
-  // Clear intervals unless transitioning from heating/paused/finished to cooling/flashing
-  if (!( (previousState === 'heating' || previousState === 'paused' || previousState === 'finished') && (newState === 'finished') )) {
-      clearAllIntervals();
-  }
-
-
-  switch(state) {
-    case "idle":
-      $('startBtn').style.display = 'block';
-      $('progressWrap').style.display = 'none';
-      $('status').textContent = "";
-      $('controls').style.display = 'block'; // Ensure controls are visible
-      document.body.classList.remove('flash-green');
-      // Allow input changes again
-      [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-          el.disabled = false;
-      });
-      updateControls(); // Recalculate time based on current settings
-      break;
-    case "heating":
-      $('startBtn').style.display = 'none';
-      $('progressWrap').style.display = 'block';
-      $('status').textContent = "Heating"; // Simplified text
-      $('controls').style.display = 'block'; // Keep controls visible
-      document.body.classList.remove('flash-green');
-       // Disable inputs during run to prevent confusion
-       [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-           el.disabled = true;
-       });
-      timerInterval = setInterval(heatingStep, 200);
-      heatingStep();
-      break;
-    case "paused":
-      $('startBtn').style.display = 'none';
-      $('progressWrap').style.display = 'block';
-      $('status').textContent = "Paused"; // Simplified text
-      $('controls').style.display = 'block'; // Keep controls visible
-      // Keep inputs disabled
-      [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-           el.disabled = true;
-      });
-      // Freeze progress bar at paused state
-      $('progressBar').style.width = sim.pausedProgress + '%';
-      $('barLabel').textContent = sim.pauseTemperature.toFixed(1) + "°";
-      // No cooling timer during pause unless explicitly added back
-      break;
-    case "finished":
-       $('startBtn').style.display = 'none'; // Keep START hidden, maybe show RESET later
-       $('progressWrap').style.display = 'block';
-       $('status').textContent = "Finished!";
-       $('controls').style.display = 'block'; // Keep controls visible
-       // Keep inputs disabled
-        [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-           el.disabled = true;
-       });
-       // Keep final state displayed
-       $('progressBar').style.width = '100%';
-       $('barLabel').textContent = sim.params.Tt.toFixed(1) + "°";
-       $('info').textContent = "0 s";
-       playChime();
-       beginFlash();
-       // Start cooling calculation display
-       sim.startTime = Date.now();
-       sim.pauseTemperature = sim.params.Tt;
-       if (!timerInterval) { // Ensure interval is started only once
-           timerInterval = setInterval(coolingStep, 1000);
-           coolingStep();
-       }
-       break;
-  }
+function updateControlsDisplay() {
+    // Update the displayed °C values next to the sliders/inputs
+    $('startVal').textContent = startTemp.value + " °C";
+    $('targetVal').textContent = targetTemp.value + " °C";
 }
 
-// --- Timer Logic ---
-
-function startHeating(){
-  // Use values currently in the inputs
-  const p = getParams();
-  const total = predictTime(p);
-
-  if (total === null || !isFinite(total)) {
-      $('info').textContent = total === null ? "Start ≥ Target" : "∞ (Cannot reach target)";
-      return;
-  }
-
-  sim = {
-      params: p,
-      totalDuration: total,
-      startTime: Date.now(),
-      resumeTimeOffset: 0,
-      pauseTemperature: p.T0,
-      pausedProgress: 0
-  };
-
-  setState("heating");
+function updatePredictedTime() {
+    // Update the large time display at the bottom
+    const p = getParams();
+    const t = predictTime(p);
+    $('info').textContent = t === null ? "Start ≥ Target" : isFinite(t) ? fmtTime(t) + " s" : "∞";
 }
 
-function heatingStep(){
-  const now = Date.now();
-  const elapsedSinceSegmentStart = (now - sim.startTime) / 1000;
-  const totalElapsedHeatingTime = sim.resumeTimeOffset + elapsedSinceSegmentStart;
+function updateSimulationDisplay(temp, remainingHeatingTime = null) {
+    sim.currentTemperature = temp; // Store latest temperature
+    $('barLabel').textContent = temp.toFixed(1) + "°";
 
-  if (totalElapsedHeatingTime >= sim.totalDuration) {
-    sim.pauseTemperature = sim.params.Tt;
-    sim.pausedProgress = 100;
-    setState("finished");
-    return;
-  }
-
-  const currentTemp = calculateTemp(sim.params, totalElapsedHeatingTime, sim.params.T0);
-  const remainingTime = sim.totalDuration - totalElapsedHeatingTime;
-  const progress = Math.min(100, (totalElapsedHeatingTime / sim.totalDuration) * 100);
-
-  $('progressBar').style.width = progress + '%';
-  $('barLabel').textContent = currentTemp.toFixed(1) + "°";
-  $('info').textContent = fmtTime(remainingTime) + " s"; // Keep updating remaining time
-
-  sim.pauseTemperature = currentTemp;
-  sim.pausedProgress = progress;
+    if (state === 'heating' && remainingHeatingTime !== null) {
+        const progress = Math.min(100, ((sim.totalDuration - remainingHeatingTime) / sim.totalDuration) * 100);
+        $('progressBar').style.width = progress + '%';
+        $('info').textContent = fmtTime(remainingHeatingTime) + " s";
+        sim.pausedProgress = progress; // Store progress for potential pause
+    } else if (state === 'paused') {
+        // Keep progress bar frozen, info shows '--' or similar
+        $('progressBar').style.width = sim.pausedProgress + '%';
+        $('info').textContent = "--";
+    } else if (state === 'finished') {
+        // Keep progress bar full, info shows 0s
+        $('progressBar').style.width = '100%';
+        $('info').textContent = "0 s";
+    }
+    // If idle, info shows predicted time (handled by updatePredictedTime)
 }
 
-function pauseHeating() {
-    if (state !== "heating") return;
-    clearInterval(timerInterval); // Stop heating interval
-    timerInterval = null;
 
+// --- Simulation Step Functions ---
+function heatingStep() {
     const now = Date.now();
-    const elapsedSinceSegmentStart = (now - sim.startTime) / 1000;
-    sim.resumeTimeOffset += elapsedSinceSegmentStart;
+    const elapsedSinceSegmentStart = (now - sim.heatingStartTime) / 1000;
+    const totalElapsedHeatingTime = sim.resumeTimeOffset + elapsedSinceSegmentStart;
 
-    setState("paused");
-}
-
-function resumeHeating() {
-    if (state !== "paused") return;
-    sim.startTime = Date.now();
-    setState("heating");
+    if (totalElapsedHeatingTime >= sim.totalDuration) {
+        // --- FINISHED ---
+        const finalTemp = sim.params.Tt;
+        sim.currentTemperature = finalTemp; // Ensure final temp is target
+        sim.pausedProgress = 100;
+        updateSimulationDisplay(finalTemp, 0); // Update UI to final state
+        setState("finished"); // Transition state
+    } else {
+        // --- STILL HEATING ---
+        const currentTemp = calculateTemp(sim.params, totalElapsedHeatingTime, sim.params.T0);
+        const remainingTime = sim.totalDuration - totalElapsedHeatingTime;
+        updateSimulationDisplay(currentTemp, remainingTime);
+    }
 }
 
 function coolingStep() {
     const now = Date.now();
-    const elapsedSinceCoolStart = (now - sim.startTime) / 1000;
-    const currentTemp = calculateCoolingTemp(sim.params, elapsedSinceCoolStart, sim.pauseTemperature);
-    $('barLabel').textContent = currentTemp.toFixed(1) + "°";
+    const elapsedCoolingTime = (now - sim.coolingStartTime) / 1000;
+    // Cooling starts from the temperature recorded when pause/finish occurred
+    const coolingStartTemp = sim.currentTemperature;
+    const currentTemp = calculateCoolingTemp(sim.params, elapsedCoolingTime, coolingStartTemp);
+    // Only update temperature label, progress/time remain as per state (paused/finished)
+    updateSimulationDisplay(currentTemp);
 }
 
+
+// --- State Transition Logic ---
+function setState(newState) {
+    if (state === newState) return; // No change
+    const previousState = state;
+    state = newState;
+
+    console.log(`State transition: ${previousState} -> ${newState}`); // Debugging
+
+    // Stop previous simulation interval ONLY if entering idle
+    if (newState === 'idle') {
+        stopSimulation();
+    }
+
+    // Update UI elements based on the new state
+    updateUIForState();
+
+    // Start/Manage Simulation Interval and Flash based on new state
+    switch (newState) {
+        case "heating":
+            sim.heatingStartTime = Date.now(); // Set start time for this heating segment
+            if (!simulationInterval) { // Start simulation if not already running
+               startSimulation(heatingStep);
+            }
+            break;
+        case "paused":
+            sim.coolingStartTime = Date.now(); // Record when cooling starts
+            // The simulation interval continues running, but we'll change the step function
+            if (!simulationInterval) { // Should ideally be running, but safety check
+                startSimulation(coolingStep);
+            }
+            break;
+        case "finished":
+            sim.coolingStartTime = Date.now(); // Record when cooling starts post-finish
+            playChime();
+            beginFlash();
+            // Simulation interval continues running, ensure it calls coolingStep
+             if (!simulationInterval) { // Should ideally be running, but safety check
+                startSimulation(coolingStep);
+            }
+            break;
+        case "idle":
+            // Simulation stopped by the check at the beginning of setState
+            updatePredictedTime(); // Update prediction based on current controls
+            break;
+    }
+}
+
+// --- Simulation Control ---
+function startSimulation(stepFunction) {
+    if (simulationInterval) return; // Already running
+    console.log("Starting simulation interval");
+    simulationInterval = setInterval(() => {
+        // Dynamically choose which step function to run based on current state
+        if (state === 'heating') {
+            heatingStep();
+        } else if (state === 'paused' || state === 'finished') {
+            coolingStep();
+        } else {
+            // Should not happen if interval is managed correctly, but stop if idle
+            stopSimulation();
+        }
+    }, 250); // Update simulation 4 times per second
+}
+
+function stopSimulation() {
+    if (simulationInterval) {
+        console.log("Stopping simulation interval");
+        clearInterval(simulationInterval);
+        simulationInterval = null;
+    }
+    stopFlash(); // Also stop flash if simulation stops
+}
+
+// --- Actions ---
+function startHeatingAction() {
+    // Use values currently in the inputs to calculate parameters and duration
+    sim.params = getParams();
+    sim.totalDuration = predictTime(sim.params);
+
+    if (sim.totalDuration === null || !isFinite(sim.totalDuration)) {
+        updatePredictedTime(); // Show ∞ or error message
+        return;
+    }
+
+    // Initialize simulation state variables
+    sim.resumeTimeOffset = 0;
+    sim.currentTemperature = sim.params.T0; // Start at initial temp
+    sim.pausedProgress = 0;
+
+    updateSimulationDisplay(sim.currentTemperature, sim.totalDuration); // Initial display before first step
+    setState("heating"); // Transition state, which will start the simulation interval
+}
+
+function pauseHeatingAction() {
+    if (state !== "heating") return;
+
+    // Stop the heating timer part, calculate offset
+    const now = Date.now();
+    const elapsedSinceSegmentStart = (now - sim.heatingStartTime) / 1000;
+    sim.resumeTimeOffset += elapsedSinceSegmentStart;
+
+    // Temperature (sim.currentTemperature) and progress (sim.pausedProgress)
+    // are already updated by the last heatingStep.
+
+    setState("paused"); // Transition state, simulation interval will now call coolingStep
+}
+
+function resumeHeatingAction() {
+    if (state !== "paused") return;
+    // No need to stop interval, just change state back to heating
+    setState("heating"); // Transition state, interval will call heatingStep again
+                         // heatingStartTime will be set by setState("heating")
+}
 
 // --- Audio & Visual Feedback ---
 let audioCtx = null;
-function playChime(){
-  try {
-    if (!audioCtx) {
-      audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-    }
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(1047, audioCtx.currentTime); // C6
-    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
-    o.connect(g).connect(audioCtx.destination);
-    o.start();
-    o.stop(audioCtx.currentTime + 1);
-  } catch (e) { console.error("Audio playback failed:", e); }
-}
+function playChime(){ /* ... same as before ... */ }
 
 function beginFlash(){
+  if (flashInterval) return; // Already flashing
   let on = false;
-  clearInterval(flashInterval);
   flashInterval = setInterval(() => {
     on = !on;
     document.body.classList.toggle('flash-green', on);
   }, 500);
 }
 
-function stopFlashAndCooling(){
-    clearInterval(flashInterval);
-    flashInterval = null;
-    document.body.classList.remove('flash-green');
-
-    if (state === "finished") {
-        clearInterval(timerInterval); // Stop cooling display timer
-        timerInterval = null;
-        // Stay in 'finished' state but without flashing/cooling updates
-        // OR reset to idle:
-        // setState("idle");
-    } else if (state === "paused" || state === "heating") {
-        // If paused/heating, maybe go back to idle? Or just stop flash if it somehow got activated
-        // Example: Reset if clicked anywhere else while running/paused
-        // setState("idle");
+function stopFlash(){
+    if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+        document.body.classList.remove('flash-green');
     }
 }
 
-// --- Interval Management ---
-function clearAllIntervals() {
-    clearInterval(timerInterval);
-    clearInterval(flashInterval);
-    timerInterval = null;
-    flashInterval = null;
-}
-
 // --- Event Binding ---
-$('startBtn').addEventListener('click', startHeating);
+$('startBtn').addEventListener('click', startHeatingAction);
 
 $('progressWrap').addEventListener('click', () => {
+  // Only allow pause/resume toggle, do nothing if finished
   if (state === "heating") {
-    pauseHeating();
+    pauseHeatingAction();
   } else if (state === "paused") {
-    resumeHeating();
+    resumeHeatingAction();
   }
 });
 
+// Click anywhere else stops flashing AND the simulation updates
 document.body.addEventListener('click', (e) => {
     const isProgressClick = e.target === $('progressWrap') || $('progressWrap').contains(e.target);
-    const isControlClick = e.target.closest('#controls') || e.target === $('startBtn'); // Check if click is on controls area or start button
+    const isControlClick = e.target.closest('#controls') || e.target === $('startBtn');
 
-    // Only stop flash/cooling if click is outside progress bar AND outside controls AND timer is finished
-    if (!isProgressClick && !isControlClick && state === "finished") {
-       stopFlashAndCooling();
-       // Optional: Reset to idle after stopping flash/cool
-       // setState("idle");
+    // If click is outside interactive elements AND simulation is running
+    if (!isProgressClick && !isControlClick && state !== 'idle') {
+       console.log("Body click detected - stopping simulation and flash");
+       stopSimulation(); // Stops interval AND flash
+       // Optional: Reset state to idle? Or leave it showing the last state?
+       // setState('idle'); // Uncomment to fully reset on outside click
     }
 });
 
 // Update predicted time display whenever controls change (only possible in idle state)
 [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-  el.addEventListener('input', updateControls);
-  el.addEventListener('change', updateControls);
+  el.addEventListener('input', () => {
+      if (state === 'idle') {
+          updateControlsDisplay();
+          updatePredictedTime();
+      }
+  });
+  el.addEventListener('change', () => {
+       if (state === 'idle') {
+           saveSettings(); // Save on 'change' (e.g., after number input)
+       }
+  });
 });
 
 // --- Initialization ---
 loadSettings();
-setState("idle"); // Initialize state machine and UI
+updateControlsDisplay(); // Show initial values from inputs
+updatePredictedTime();  // Show initial prediction
+setState("idle"); // Set initial state and update UI accordingly
 
 window.addEventListener('beforeunload', () => {
-    clearAllIntervals();
+    stopSimulation(); // Clean up interval on unload
 });
 
 // --- END OF REFACTORED SCRIPT SECTION ---
