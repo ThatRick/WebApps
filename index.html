@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer - Simulation Centric (Final)</title>
+<title>Microwave Timer - Simulation Centric (vFinal)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
@@ -82,7 +82,7 @@ body.flash-green { background-color: var(--fill-end); }
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>Simulation Centric (Final)</small></h1>
+  <h1>Microwave Timer<small>Simulation Centric (vFinal)</small></h1>
 </header>
 <div id="card">
   <div id="controls">
@@ -143,12 +143,8 @@ function loadSettings() {
 const $ = id => document.getElementById(id);
 
 function fmtTime(s) {
-    if (s === null || typeof s === 'undefined' || isNaN(s)) {
-        return "--:--";
-    }
-    if (!isFinite(s)) {
-        return "∞";
-    }
+    if (s === null || typeof s === 'undefined' || isNaN(s)) { return "--:--"; }
+    if (!isFinite(s)) { return "∞"; }
     s = Math.max(0, Math.round(s));
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -163,7 +159,6 @@ function getParams() {
         const val = parseFloat(inputElement.value);
         return (isNaN(val) || val < minValue || inputElement.value.trim() === "") ? defaultValue : val;
     };
-
     const T0 = parseFloatOrDefault('startTemp', 10);
     const Tt = parseFloatOrDefault('targetTemp', 80);
     const mW = parseFloatOrDefault('waterMass', 300, 1) / 1000;
@@ -171,12 +166,8 @@ function getParams() {
     const P0 = parseFloatOrDefault('power0', 600, 0);
     const hA = parseFloatOrDefault('heatLoss', 1.0, 0);
     const Ta = parseFloatOrDefault('roomTemp', 22);
-
     const MC = mW * cW + mM * cC;
-    if (MC <= 0) {
-        console.error("Calculated MC is <= 0. Check masses.", {mW, mM});
-        return null;
-    }
+    if (MC <= 0) { console.error("Calculated MC is <= 0.", {mW, mM}); return null; }
     return { T0, Tt, P0, hA, Ta, MC };
 }
 
@@ -224,10 +215,8 @@ function updateUI() {
         $('barLabel').textContent = '';
         return;
     }
-
     const tempDisplay = isNaN(sim.currentTemperature) ? "--" : sim.currentTemperature.toFixed(1);
     $('barLabel').textContent = tempDisplay + "°";
-
     const tempRange = sim.targetTemperature - sim.initialTemperature;
     let progress = 0;
     if (tempRange > 0 && !isNaN(sim.currentTemperature)) {
@@ -237,7 +226,6 @@ function updateUI() {
     }
     progress = Math.max(0, Math.min(100, progress));
     $('progressBar').style.width = progress + '%';
-
     if (state === 'heating' || state === 'paused') {
         const remaining = estimateRemainingTime(sim.params, sim.currentTemperature);
         $('info').textContent = fmtTime(remaining) + (isFinite(remaining) ? " s" : "");
@@ -256,10 +244,7 @@ function updateControlsOnIdle() {
 
 function updatePredictedTimeFromInputs() {
     const p = getParams();
-    if (!p) {
-        $('info').textContent = "Invalid Params";
-        return;
-    }
+    if (!p) { $('info').textContent = "Invalid Params"; return; }
     const t = estimateRemainingTime(p, p.T0);
     $('info').textContent = (t === null || (p.T0 >= p.Tt)) ? "Start ≥ Target" : fmtTime(t) + (isFinite(t) ? " s" : "");
 }
@@ -282,6 +267,7 @@ function updateUIForStateChange() {
 }
 
 // --- Simulation Loop ---
+// *** Contains the refined clamping logic ***
 function simulationStep() {
     if (state === 'idle' || !sim.params) return;
 
@@ -290,7 +276,7 @@ function simulationStep() {
     sim.lastTickTime = now;
 
     if (deltaTime <= 0) return;
-    // Optional: Cap deltaTime to prevent large jumps after backgrounding
+    // Optional: Cap deltaTime
     // deltaTime = Math.min(deltaTime, 0.5);
 
     const isHeating = (state === 'heating');
@@ -306,21 +292,27 @@ function simulationStep() {
         return;
     }
 
-    // Clamp to room temp ONLY if cooling would take it below room temp
-    if (!isHeating && sim.params.hA > 0 && nextTemperature < sim.params.Ta) {
-         sim.currentTemperature = sim.params.Ta; // Set to Ta if cooling went below
+    // --- REFINED Clamping Logic ---
+    if (!isHeating && sim.params.hA > 0) {
+        // Apply clamp only if temp was >= Ta before this step AND the step would take it below Ta
+        if (sim.currentTemperature >= sim.params.Ta && nextTemperature < sim.params.Ta) {
+            sim.currentTemperature = sim.params.Ta; // Clamp - prevent cooling below room temp
+            // console.log("Clamped cooling to room temp:", sim.params.Ta); // Optional debug
+        } else {
+            // Otherwise, allow normal cooling OR warming towards Ta if it started below Ta
+             sim.currentTemperature = nextTemperature;
+        }
     } else {
-        // Otherwise, update temperature normally
+        // If heating, or no heat loss, just update temperature normally
         sim.currentTemperature = nextTemperature;
     }
+    // --- End of Refined Clamping Logic ---
 
-    // Check for reaching target ONLY when heating
     if (isHeating && sim.currentTemperature >= sim.targetTemperature) {
-        sim.currentTemperature = sim.targetTemperature; // Snap to target
-        updateUI(); // Update UI one last time before changing state
+        sim.currentTemperature = sim.targetTemperature;
+        updateUI();
         setState("finished");
     } else {
-        // Update UI normally if not finished
         updateUI();
     }
 }
@@ -330,7 +322,7 @@ function setState(newState) {
     if (state === newState) return;
     const previousState = state;
     state = newState;
-    console.log(`State transition: ${previousState} -> ${newState}`);
+    console.log(`State transition: ${previousState} -> ${newState}`); // Keep this log
     updateUIForStateChange();
     if (newState === 'idle') {
         stopSimulation();
@@ -339,20 +331,20 @@ function setState(newState) {
         if (previousState === 'idle') { startSimulation(); }
         if (newState === 'finished') { playChime(); beginFlash(); }
     }
-    updateUI(); // Update UI immediately after state change
+    updateUI();
 }
 
 // --- Simulation Control ---
 function startSimulation() {
     if (simulationInterval) return;
-    console.log("Starting simulation interval");
+    console.log("Starting simulation interval"); // Keep this log
     sim.lastTickTime = Date.now();
     simulationInterval = setInterval(simulationStep, SIMULATION_INTERVAL_MS);
 }
 
 function stopSimulation() {
     if (simulationInterval) {
-        console.log("Stopping simulation interval");
+        console.log("Stopping simulation interval"); // Keep this log
         clearInterval(simulationInterval);
         simulationInterval = null;
     }
@@ -361,7 +353,6 @@ function stopSimulation() {
 
 // --- Actions ---
 function startAction() {
-    // console.log("----- Start Action -----"); // Keep logs minimal now
     if (state !== 'idle') { return; }
     sim.params = getParams();
     if (!sim.params) { $('info').textContent = "Invalid Params"; return; }
