@@ -42,6 +42,10 @@ input[type=range]:disabled::-webkit-slider-thumb { cursor: not-allowed; backgrou
 .value-display { margin-left: .4rem; font-size: 1.6rem; font-weight: 600; color: var(--text); }
 details { margin-top: var(--space); border-top: 1px dashed #333; padding-top: var(--space); }
 summary { cursor: pointer; color: var(--fill-end); font-weight: 500; }
+details[open] summary { margin-bottom: calc(var(--space) / 2); } /* Add space when open */
+details label { margin-top: calc(var(--space) / 2); } /* Add space between advanced inputs */
+details label:first-of-type { margin-top: 0; } /* No top margin for first advanced input */
+
 input[type=number] {
   width: 100%; padding: .6rem .8rem; margin-top: .25rem; font-size: 1rem;
   border: 1px solid #333; border-radius: var(--radius); background: #000; color: var(--text);
@@ -76,11 +80,11 @@ input[type=number]:disabled { background: #111; color: #777; cursor: not-allowed
 }
 footer {
   margin-top: var(--space); text-align: center; font-size: 0.85rem;
-  color: var(--muted); font-style: italic;
+  color: var(--muted); font-style: italic; cursor: pointer; /* Add cursor pointer */
 }
 body.flash-green {
-   background-color: var(--fill-end) !important; /* Use !important to help override inline styles if needed */
-   /* Transition is handled by the body default, or removed in JS if desired */
+   background-color: var(--fill-end); /* No !important needed now */
+   /* Transition is handled by the body default */
 }
 
 /* --- Debug Styles --- */
@@ -152,7 +156,7 @@ body.flash-green {
       <label>Target <span id="targetVal" class="value-display">? °C</span></label>
       <input id="targetTemp" type="range" min="75" max="90" step="1" value="80">
     </div>
-    <details>
+    <details id="advancedDetails"> <!-- Give details an ID -->
       <summary>Advanced</summary>
       <label>Water mass (g)<input id="waterMass" type="number" placeholder="e.g., 300" value="303" step="1" min="1"></label>
       <label>Mug mass (g)<input id="mugMass" type="number" placeholder="e.g., 250" value="250" step="1" min="0"></label>
@@ -166,7 +170,7 @@ body.flash-green {
   <div id="status"></div>
   <div id="info"></div>
 </div>
-<footer>tap anywhere (except progress bar/controls) to stop simulation & flashing</footer>
+<footer id="pageFooter">Tap <i>here</i> to stop simulation & flashing</footer> <!-- Give footer an ID -->
 
 <!-- Debug Output Area -->
 <div id="debugContainer" style="display: none;">
@@ -202,7 +206,6 @@ const originalConsole = {
     log: console.log.bind(console),
     warn: console.warn.bind(console),
     error: console.error.bind(console),
-    // Add more if needed (info, debug, etc.)
 };
 
 // Override console methods
@@ -232,7 +235,7 @@ clearDebugBtn.addEventListener('click', () => {
     if(debugOutput) debugOutput.innerHTML = '';
 });
 
-console.log("Debug logger initialized."); // Test the logger
+console.log("Debug logger initialized.");
 
 // --- Constants & Persistence ---
 const KEY = "microwaveTimerSettings_sim";
@@ -246,13 +249,13 @@ function saveSettings() {
         water:+waterMass.value,mug:+mugMass.value,
         P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
         }));
-        console.log("Settings saved:", JSON.parse(localStorage.getItem(KEY))); // Log saved settings
+        console.log("Settings saved:", JSON.parse(localStorage.getItem(KEY)));
     }
 }
 function loadSettings() {
     try{
         const d=JSON.parse(localStorage.getItem(KEY)||"{}");
-        console.log("Attempting to load settings:", d); // Log loaded settings
+        console.log("Attempting to load settings:", d);
         if(d.start && typeof d.start === 'number') $('startTemp').value=d.start;
         if(d.target && typeof d.target === 'number') $('targetTemp').value=d.target;
         if(d.water && typeof d.water === 'number') $('waterMass').value=d.water;
@@ -308,17 +311,13 @@ function getParams() {
 }
 
 function calculateDeltaT(params, currentTemp, deltaTime, isHeating) {
-    if (!params || params.MC <= 0 || deltaTime <= 0) {
-        // console.log("Skipping deltaT calc (invalid params/MC/deltaTime)"); // Can be noisy
-        return 0;
-    }
+    if (!params || params.MC <= 0 || deltaTime <= 0) return 0;
     const powerInput = isHeating ? params.P0 : 0;
-    const hA_safe = Math.max(0, params.hA); // Ensure non-negative
+    const hA_safe = Math.max(0, params.hA);
     const powerLoss = hA_safe * (currentTemp - params.Ta);
     const netPower = powerInput - powerLoss;
     const dT_dt = netPower / params.MC;
     const deltaT = dT_dt * deltaTime;
-    // console.log(`DeltaT Calc: T=${currentTemp.toFixed(2)}, dT=${deltaT.toFixed(4)}, dt=${deltaTime.toFixed(3)}, heating=${isHeating}, P0=${powerInput}, Ploss=${powerLoss.toFixed(2)}, NetP=${netPower.toFixed(2)}`); // Very verbose log
     return deltaT;
 }
 
@@ -328,37 +327,29 @@ function estimateRemainingTime(params, currentTemp) {
     if (currentTemp >= targetTemp) { return 0; }
     const P0_safe = Math.max(0, params.P0);
     const hA_safe = Math.max(0, params.hA);
-    if (P0_safe <= 0 && currentTemp < targetTemp) { return Infinity; } // Heating needed but no power
+    if (P0_safe <= 0 && currentTemp < targetTemp) { return Infinity; }
 
     const maxReachableTemp = (hA_safe > 0) ? params.Ta + (P0_safe / hA_safe) : Infinity;
     if (targetTemp > maxReachableTemp) {
         console.warn(`Target (${targetTemp}°C) is unreachable. Max possible ≈ ${maxReachableTemp.toFixed(1)}°C`);
         return Infinity;
     }
-
-    // Handle zero heat loss case separately
     if (hA_safe <= 0) {
-        if (P0_safe <= 0) return Infinity; // Should have been caught above, but safety
+        if (P0_safe <= 0) return Infinity;
         return (params.MC * (targetTemp - currentTemp)) / P0_safe;
     }
-
-    // Standard case with heat loss
     const numerator = P0_safe - hA_safe * (currentTemp - params.Ta);
     const denominator = P0_safe - hA_safe * (targetTemp - params.Ta);
-
-    // Check for edge cases / potential division by zero or log of non-positive
     if (numerator <= 0 && currentTemp < targetTemp) {
         console.warn("Cannot reach target from current temp (numerator <= 0). Current heat loss >= P0.");
-        return Infinity; // Already losing heat faster than gaining, or at equilibrium below target
+        return Infinity;
     }
      if (denominator <= 0) {
-        // This case implies targetTemp >= maxReachableTemp, should be caught by the check above
         console.warn("Denominator issue in time estimation (target likely unreachable).");
         return Infinity;
     }
-
     const time = (params.MC / hA_safe) * Math.log(numerator / denominator);
-    return isNaN(time) ? NaN : Math.max(0, time); // Ensure non-negative time
+    return isNaN(time) ? NaN : Math.max(0, time);
 }
 
 // --- State Management ---
@@ -369,10 +360,10 @@ let sim = {
     params: null, currentTemperature: 0, initialTemperature: 0,
     targetTemperature: 0, lastTickTime: 0
 };
+const detailsElement = $('advancedDetails'); // Get reference to details element
 
 // --- UI Update Functions ---
 function updateUI() {
-    // console.log("Updating UI for state:", state); // Can be noisy
     if (state === 'idle') {
         updatePredictedTimeFromInputs();
         $('progressWrap').style.display = 'none';
@@ -403,13 +394,13 @@ function updateControlsOnIdle() {
     const targetVal = $('targetTemp').value;
     $('startVal').textContent = parseFloat(startVal).toFixed(1) + " °C";
     $('targetVal').textContent = parseFloat(targetVal).toFixed(0) + " °C";
-    updatePredictedTimeFromInputs(); // Recalculate time estimate based on inputs
+    updatePredictedTimeFromInputs();
 }
 
 function updatePredictedTimeFromInputs() {
-    const p = getParams(); // Get current params from inputs
+    const p = getParams();
     if (!p) { $('info').textContent = "Invalid Params"; return; }
-    const t = estimateRemainingTime(p, p.T0); // Estimate based on *start* temp T0
+    const t = estimateRemainingTime(p, p.T0);
     let displayTime;
     if (p.T0 >= p.Tt) {
          displayTime = "Start ≥ Target";
@@ -424,26 +415,35 @@ function updatePredictedTimeFromInputs() {
      console.log(`Predicted time from inputs: ${displayTime}`);
 }
 
-
 function updateUIForStateChange() {
     console.log(`Updating UI for state change to: ${state}`);
     const isIdle = state === "idle";
     const isRunning = !isIdle;
     $('startBtn').style.display = isIdle ? 'block' : 'none';
     $('progressWrap').style.display = isRunning ? 'block' : 'none';
-    [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+
+    // Disable all controls within #controls div when running
+    $('controls').querySelectorAll('input, summary').forEach(el => {
         el.disabled = isRunning;
-        // Also disable the details summary click when running? Maybe not necessary.
-        const details = el.closest('details');
-        if (details) details.open = !isRunning; // Close details when running
+        // Make summary non-interactive when disabled
+        if (el.tagName === 'SUMMARY') {
+           el.style.pointerEvents = isRunning ? 'none' : '';
+           el.style.opacity = isRunning ? 0.6 : 1;
+        }
     });
+
+    // Close details when running, re-open when stopping/idle
+    if (detailsElement) {
+        detailsElement.open = !isRunning;
+    }
+
     switch (state) {
         case "idle": $('status').textContent = ""; break;
         case "heating": $('status').textContent = "Heating"; break;
         case "paused": $('status').textContent = "Paused"; break;
         case "finished": $('status').textContent = "Finished!"; break;
     }
-    if (state !== "finished") { stopFlash(); } // Ensure flash stops if not finished
+    if (state !== "finished") { stopFlash(); }
 }
 
 // --- Simulation Loop ---
@@ -454,9 +454,8 @@ function simulationStep() {
     let deltaTime = (now - sim.lastTickTime) / 1000;
     sim.lastTickTime = now;
 
-    if (deltaTime <= 0) return; // Avoid issues if clock jumps back or zero time passes
-    // Optional: Cap deltaTime to prevent huge jumps if tab was inactive
-    // deltaTime = Math.min(deltaTime, 0.5); // e.g., max half-second step
+    if (deltaTime <= 0) return;
+    deltaTime = Math.min(deltaTime, 0.5); // Cap delta time
 
     const isHeating = (state === 'heating');
     const deltaT = calculateDeltaT(sim.params, sim.currentTemperature, deltaTime, isHeating);
@@ -471,26 +470,21 @@ function simulationStep() {
         return;
     }
 
-    // --- Clamping Logic ---
-    // Prevent cooling below room temperature ONLY if heat loss is positive
-    // And only if the step would actually take it below room temp
+    // Clamping Logic
     if (!isHeating && sim.params.hA > 0 && nextTemperature < sim.params.Ta && sim.currentTemperature >= sim.params.Ta) {
-        // console.log(`Clamping cooling: Next temp ${nextTemperature.toFixed(2)} < Room temp ${sim.params.Ta}. Setting to ${sim.params.Ta}`);
         sim.currentTemperature = sim.params.Ta;
     } else {
-        // Otherwise, update normally (heating, or cooling towards Ta from above/below, or no heat loss)
         sim.currentTemperature = nextTemperature;
     }
-    // --- End of Clamping Logic ---
 
-    // Check for finish condition AFTER updating temperature
+    // Check for finish condition
     if (isHeating && sim.currentTemperature >= sim.targetTemperature) {
         console.log(`Target reached! Current: ${sim.currentTemperature.toFixed(2)}, Target: ${sim.targetTemperature}`);
         sim.currentTemperature = sim.targetTemperature; // Clamp exactly to target
-        updateUI(); // Update UI one last time before state change
+        updateUI();
         setState("finished");
     } else {
-        updateUI(); // Regular update during heating/paused
+        updateUI();
     }
 }
 
@@ -498,42 +492,37 @@ function simulationStep() {
 function setState(newState) {
     if (state === newState) {
          console.log(`setState called with same state: ${newState}, ignoring.`);
-         return; // No change
+         return;
     }
     const previousState = state;
     state = newState;
     console.log(`State transition: ${previousState} -> ${newState}`);
-    updateUIForStateChange(); // Update buttons/visibility/disabled status
+    updateUIForStateChange();
 
     if (newState === 'idle') {
-        stopSimulation(); // Stops interval and flash
-        updateControlsOnIdle(); // Update display values and estimated time
+        stopSimulation();
+        updateControlsOnIdle();
     } else {
         if (previousState === 'idle') {
-            startSimulation(); // Starts interval if transitioning from idle
+            startSimulation();
         }
         if (newState === 'finished') {
             playChime();
             beginFlash();
         }
-        // Ensure simulation keeps running if paused->heating or heating->paused
-        // If heating or paused, ensure interval is running (startSimulation handles this)
         if (newState === 'heating' || newState === 'paused') {
-             startSimulation(); // Safe to call even if running
+             startSimulation();
         }
-
     }
-    updateUI(); // Update progress bar, temperature display, remaining time
+    updateUI();
 }
 
 // --- Simulation Control ---
 function startSimulation() {
-    if (!simulationInterval) { // Only start if not already running
+    if (!simulationInterval) {
        console.log("Starting simulation interval");
-       sim.lastTickTime = Date.now(); // Reset tick time when starting/resuming
+       sim.lastTickTime = Date.now();
        simulationInterval = setInterval(simulationStep, SIMULATION_INTERVAL_MS);
-    } else {
-        // console.log("Simulation interval already running."); // Debug if needed
     }
 }
 
@@ -543,14 +532,14 @@ function stopSimulation() {
         clearInterval(simulationInterval);
         simulationInterval = null;
     }
-    stopFlash(); // Always ensure flash stops when simulation stops
+    stopFlash();
 }
 
 // --- Actions ---
 function startAction() {
     if (state !== 'idle') { return; }
     console.log("Start button clicked.");
-    initializeAudio(); // Ensure audio is ready on user interaction
+    initializeAudio();
     sim.params = getParams();
     if (!sim.params) {
         $('info').textContent = "Invalid Params";
@@ -559,9 +548,8 @@ function startAction() {
     }
     sim.initialTemperature = sim.params.T0;
     sim.targetTemperature = sim.params.Tt;
-    sim.currentTemperature = sim.params.T0; // Start at initial temp
+    sim.currentTemperature = sim.params.T0;
 
-    // Pre-flight check: Can the target be reached?
     const initialEstimate = estimateRemainingTime(sim.params, sim.currentTemperature);
     if (sim.params.T0 >= sim.params.Tt) {
          $('info').textContent = "Start ≥ Target";
@@ -587,54 +575,50 @@ function pauseAction() {
 function resumeAction() {
      if (state === 'paused') {
         console.log("Resume action triggered.");
-        sim.lastTickTime = Date.now(); // Important: reset time to avoid large jump after pause
+        sim.lastTickTime = Date.now();
         setState('heating');
      }
 }
 function stopAction() {
     if (state !== 'idle') {
-        console.log("Stop action triggered (via body click or explicit call).");
+        console.log("Stop action triggered (via footer click).");
         setState('idle');
     }
 }
 
 // --- Audio & Visual Feedback ---
-let audioCtx = null; // Initialize audio context lazily
+let audioCtx = null;
 
 function initializeAudio() {
     if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
         try {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             console.log("AudioContext initialized.");
-            // Resume if suspended (often needed on first interaction)
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume().then(() => console.log("AudioContext resumed."))
                                 .catch(e => console.error("Error resuming AudioContext:", e));
             }
         } catch (e) {
             console.error("Web Audio API is not supported or initialization failed.", e);
-            audioCtx = null; // Ensure it's null if failed
+            audioCtx = null;
         }
     }
 }
 
-// Basic chime function
 function playChime(){
-    // Ensure audio context is ready (should have been called by user interaction already)
     if (!audioCtx) {
         console.warn("AudioContext not available, cannot play chime.");
-        initializeAudio(); // Try one last time
+        initializeAudio();
         if (!audioCtx) return;
     }
-     // Check state again after potential resume attempt
     if (audioCtx.state !== 'running') {
         console.warn(`AudioContext state is ${audioCtx.state}, attempting to resume for chime...`);
         audioCtx.resume().then(() => {
              console.log("AudioContext resumed for chime, trying again.");
-             playChimeInternal(); // Try playing now that it's resumed
+             playChimeInternal();
         }).catch(e => console.error("Error resuming AudioContext for chime:", e));
     } else {
-        playChimeInternal(); // Play directly if already running
+        playChimeInternal();
     }
 }
 
@@ -650,7 +634,7 @@ function playChimeInternal() {
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
         oscillator.start(audioCtx.currentTime);
@@ -661,7 +645,6 @@ function playChimeInternal() {
     }
 }
 
-
 // --- Flashing Logic ---
 function beginFlash(){
     console.log(">>> beginFlash called. Current state:", state);
@@ -669,25 +652,18 @@ function beginFlash(){
         console.log(">>> Flash already running, exiting beginFlash.");
         return;
     }
-
-    // --- DEBUG: Immediately change background to show function was called ---
-    // Set a highly visible color first.
-    document.body.style.backgroundColor = 'purple'; // DEBUG COLOR
-    console.log(">>> DEBUG: Set background to purple.");
-    // We need a slight delay before starting the interval to ensure the purple is rendered
-    // and the subsequent class toggle doesn't happen in the same paint cycle.
+    // Start interval slightly delayed to ensure class removal/addition is clean
     setTimeout(() => {
         console.log(">>> Starting flash interval now.");
-        let on = false; // Start with flash "off" visually (body default or purple)
+        let on = false;
         document.body.classList.remove('flash-green'); // Ensure it starts "off"
 
         flashInterval = setInterval(() => {
             on = !on;
             document.body.classList.toggle('flash-green', on);
-            // console.log(">>> Flash toggle:", on ? "ON (Green)" : "OFF (Default/Purple)"); // Can be noisy
-        }, 600); // Interval for flashing (milliseconds)
+        }, 600); // Flash interval
         console.log(">>> Flash interval started. Interval ID:", flashInterval);
-    }, 50); // Small delay (50ms)
+    }, 50); // Small delay
 }
 
 function stopFlash(){
@@ -699,36 +675,35 @@ function stopFlash(){
     }
     // Clean up styles explicitly
     document.body.classList.remove('flash-green');
-    document.body.style.backgroundColor = ''; // Reset direct style to allow CSS variables to take over
-    console.log(">>> flash-green class removed, direct background style reset.");
+    // No need to reset inline background style anymore
+    console.log(">>> flash-green class removed.");
 }
 
 
 // --- Event Binding ---
-$('startBtn').addEventListener('click', startAction); // initializeAudio is called inside startAction
+$('startBtn').addEventListener('click', startAction);
 
 $('progressWrap').addEventListener('click', () => {
-    initializeAudio(); // Ensure context is active for potential future sounds
+    initializeAudio();
     if (state === 'heating') { pauseAction(); }
     else if (state === 'paused') { resumeAction(); }
 });
 
-// Stop simulation/flashing on tap outside controls/progress bar
-document.body.addEventListener('click', (e) => {
-    // Prevent body click from stopping if the click originated from controls/progress/debug area
-    const isProgressClick = e.target === $('progressWrap') || $('progressWrap').contains(e.target);
-    const isControlClick = e.target.closest('#controls') || e.target === $('startBtn');
-    const isDebugClick = e.target.closest('#debugContainer') || e.target === toggleDebugBtn;
-
-    if (!isProgressClick && !isControlClick && !isDebugClick && state !== 'idle') {
-        console.log("Body click detected outside interactive elements, stopping.");
-        initializeAudio(); // Ensure context active before potential state change sound later
+// Stop simulation/flashing ONLY on footer tap
+$('pageFooter').addEventListener('click', (e) => {
+    if (state !== 'idle') {
+        console.log("Footer click detected, stopping simulation.");
+        initializeAudio(); // Ensure audio context is active
         stopAction();
-    } else if (!isDebugClick) {
-        // Any other click might be the first interaction needed for audio
-        initializeAudio();
     }
 });
+
+// Initialize audio on any click within the main card if context isn't already active
+// This helps ensure audio is ready for the chime later, without interfering with stop logic.
+$('card').addEventListener('click', () => {
+    initializeAudio();
+});
+
 
 // Input listeners
 [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
@@ -740,9 +715,8 @@ document.body.addEventListener('click', (e) => {
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log("DOM Content Loaded.");
     loadSettings();
-    updateControlsOnIdle(); // Set initial display values based on loaded/default settings
-    setState("idle"); // Set initial state explicitly
-    // Hide debug initially unless needed
+    updateControlsOnIdle();
+    setState("idle");
     debugContainer.style.display = 'none';
     isDebugVisible = false;
     toggleDebugBtn.textContent = 'Show Debug Log';
@@ -752,7 +726,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
 window.addEventListener('beforeunload', () => {
     console.log("Page unloading, stopping simulation.");
     stopSimulation();
-    // No need to save settings here, it's done on 'change' when idle
 });
 
 </script>
