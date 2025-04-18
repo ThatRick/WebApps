@@ -5,7 +5,6 @@
 <title>Microwave Timer - Simulation Centric (Debug Unreachable)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-/* ... (CSS styles remain the same) ... */
 :root {
   --bg: #0d0d0d; --card: #161616; --text: #e8e8e8; --muted: #7a7a7a;
   --track: #1f1f1f; --fill-start: #005f99; --fill-end: #008644;
@@ -118,34 +117,92 @@ const KEY = "microwaveTimerSettings_sim";
 const SIMULATION_INTERVAL_MS = 250;
 const cW = 4186, cC = 880;
 
-function saveSettings() { /* ... same as before ... */ }
-function loadSettings() { /* ... same as before ... */ }
+function saveSettings() {
+    if (state === "idle") {
+        localStorage.setItem(KEY, JSON.stringify({
+        start:+startTemp.value,target:+targetTemp.value,
+        water:+waterMass.value,mug:+mugMass.value,
+        P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
+        }));
+    }
+}
+function loadSettings() {
+    try{
+        const d=JSON.parse(localStorage.getItem(KEY)||"{}");
+        // Use defaults if value not found in storage or is invalid type
+        if(d.start && typeof d.start === 'number') $('startTemp').value=d.start;
+        if(d.target && typeof d.target === 'number') $('targetTemp').value=d.target;
+        if(d.water && typeof d.water === 'number') $('waterMass').value=d.water;
+        if(d.mug && typeof d.mug === 'number') $('mugMass').value=d.mug;
+        if(d.P0 && typeof d.P0 === 'number') $('power0').value=d.P0;
+        if(d.hA && typeof d.hA === 'number') $('heatLoss').value=d.hA;
+        if(d.room && typeof d.room === 'number') $('roomTemp').value=d.room;
+    }catch(e){ console.error("Error loading settings:", e); }
+}
 
 // --- Helpers ---
 const $ = id => document.getElementById(id);
-function fmtTime(s) { /* ... same as before ... */ }
+
+function fmtTime(s) {
+    if (s === null || typeof s === 'undefined' || isNaN(s)) {
+        return "--:--";
+    }
+    if (!isFinite(s)) {
+        return "∞";
+    }
+    s = Math.max(0, Math.round(s));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? m + ":" + sec.toString().padStart(2, "0") : sec.toString();
+}
 
 // --- Physics Model ---
-function getParams() { /* ... same as previous correct version ... */
+function getParams() {
     const parseFloatOrDefault = (elementId, defaultValue, minValue = -Infinity) => {
         const inputElement = $(elementId);
-        if (!inputElement) { console.error(`Element with ID '${elementId}' not found.`); return defaultValue; }
+        // Check if element exists before accessing value
+        if (!inputElement) {
+             console.error(`Element with ID '${elementId}' not found.`);
+             return defaultValue;
+        }
         const val = parseFloat(inputElement.value);
-        return (isNaN(val) || val < minValue) ? defaultValue : val;
+        // Use defaultValue if NaN, less than minValue, or if original input was empty string
+        // (parseFloat("") is NaN)
+        return (isNaN(val) || val < minValue || inputElement.value.trim() === "") ? defaultValue : val;
     };
+
     const T0 = parseFloatOrDefault('startTemp', 10);
     const Tt = parseFloatOrDefault('targetTemp', 80);
-    const mW = parseFloatOrDefault('waterMass', 300, 1) / 1000;
+    const mW = parseFloatOrDefault('waterMass', 300, 1) / 1000; // Min 1g water
     const mM = parseFloatOrDefault('mugMass', 250, 0) / 1000;
     const P0 = parseFloatOrDefault('power0', 600, 0);
     const hA = parseFloatOrDefault('heatLoss', 1.0, 0);
     const Ta = parseFloatOrDefault('roomTemp', 22);
+
     const MC = mW * cW + mM * cC;
-    if (MC <= 0) { console.error("Calculated MC is <= 0.", {mW, mM}); return null; }
+    if (MC <= 0) {
+        console.error("Calculated MC is <= 0. Check masses.", {mW, mM});
+        // Indicate invalid params by returning null or specific object
+        return null;
+    }
+
     return { T0, Tt, P0, hA, Ta, MC };
 }
 
-function calculateDeltaT(params, currentTemp, deltaTime, isHeating) { /* ... same as before ... */ }
+
+function calculateDeltaT(params, currentTemp, deltaTime, isHeating) {
+    // Add checks for invalid parameters that could lead to NaN/Infinity
+    if (!params || params.MC <= 0 || deltaTime <= 0) return 0;
+
+    const powerInput = isHeating ? params.P0 : 0;
+    // Ensure hA is non-negative before using it
+    const hA_safe = Math.max(0, params.hA);
+    const powerLoss = hA_safe * (currentTemp - params.Ta);
+    const netPower = powerInput - powerLoss;
+
+    const dT_dt = netPower / params.MC;
+    return dT_dt * deltaTime;
+}
 
 // *** ADDED DEBUG LOGS to estimateRemainingTime ***
 function estimateRemainingTime(params, currentTemp) {
@@ -207,26 +264,168 @@ function estimateRemainingTime(params, currentTemp) {
 let state = "idle";
 let simulationInterval = null;
 let flashInterval = null;
-let sim = { /* ... same as before ... */ };
+let sim = {
+    params: null,
+    currentTemperature: 0,
+    initialTemperature: 0,
+    targetTemperature: 0,
+    lastTickTime: 0
+};
 
 // --- UI Update Functions ---
-function updateUI() { /* ... same as before ... */ }
-function updateControlsOnIdle() { /* ... same as before ... */ }
-function updatePredictedTimeFromInputs() { /* ... same as before ... */ }
-function updateUIForStateChange() { /* ... same as before ... */ }
+function updateUI() {
+    if (state === 'idle') {
+        updatePredictedTimeFromInputs();
+        $('progressWrap').style.display = 'none';
+        $('barLabel').textContent = '';
+        return;
+    }
+
+    const tempDisplay = isNaN(sim.currentTemperature) ? "--" : sim.currentTemperature.toFixed(1);
+    $('barLabel').textContent = tempDisplay + "°";
+
+    const tempRange = sim.targetTemperature - sim.initialTemperature;
+    let progress = 0;
+    if (tempRange > 0 && !isNaN(sim.currentTemperature)) {
+        progress = ((sim.currentTemperature - sim.initialTemperature) / tempRange) * 100;
+    } else if (!isNaN(sim.currentTemperature) && sim.currentTemperature >= sim.targetTemperature) {
+        progress = 100;
+    }
+    progress = Math.max(0, Math.min(100, progress));
+    $('progressBar').style.width = progress + '%';
+
+    if (state === 'heating' || state === 'paused') {
+        const remaining = estimateRemainingTime(sim.params, sim.currentTemperature);
+        $('info').textContent = fmtTime(remaining) + (isFinite(remaining) ? " s" : "");
+    } else if (state === 'finished') {
+        $('info').textContent = "0 s";
+    }
+}
+
+
+function updateControlsOnIdle() {
+    const startVal = $('startTemp').value;
+    const targetVal = $('targetTemp').value;
+    $('startVal').textContent = parseFloat(startVal).toFixed(1) + " °C";
+    $('targetVal').textContent = parseFloat(targetVal).toFixed(0) + " °C";
+    updatePredictedTimeFromInputs();
+}
+
+
+function updatePredictedTimeFromInputs() {
+    const p = getParams();
+    if (!p) {
+        $('info').textContent = "Invalid Params";
+        return;
+    }
+    const t = estimateRemainingTime(p, p.T0);
+    $('info').textContent = (t === null || (p.T0 >= p.Tt)) ? "Start ≥ Target" : fmtTime(t) + (isFinite(t) ? " s" : "");
+}
+
+
+function updateUIForStateChange() {
+    const isIdle = state === "idle";
+    const isRunning = !isIdle;
+
+    $('startBtn').style.display = isIdle ? 'block' : 'none';
+    $('progressWrap').style.display = isRunning ? 'block' : 'none';
+
+    [startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+        el.disabled = isRunning;
+    });
+
+    switch (state) {
+        case "idle": $('status').textContent = ""; break;
+        case "heating": $('status').textContent = "Heating"; break;
+        case "paused": $('status').textContent = "Paused"; break;
+        case "finished": $('status').textContent = "Finished!"; break;
+    }
+
+    if (state !== "finished") {
+        stopFlash();
+    }
+}
+
 
 // --- Simulation Loop ---
-function simulationStep() { /* ... same as before ... */ }
+function simulationStep() {
+    if (state === 'idle' || !sim.params) return;
+
+    const now = Date.now();
+    let deltaTime = (now - sim.lastTickTime) / 1000;
+    sim.lastTickTime = now;
+
+    // Safety check for large deltaTime (e.g. after tab sleep) - cap it?
+    if (deltaTime <= 0) return;
+    // Optional: Cap deltaTime to prevent huge jumps after backgrounding
+    // deltaTime = Math.min(deltaTime, 0.5); // e.g., cap at 0.5s
+
+    const isHeating = (state === 'heating');
+    const deltaT = calculateDeltaT(sim.params, sim.currentTemperature, deltaTime, isHeating);
+
+    if (!isNaN(deltaT)) {
+        sim.currentTemperature += deltaT;
+    } else {
+        console.warn("deltaT is NaN, stopping simulation.");
+        setState('idle');
+        return;
+    }
+
+     if (!isHeating && sim.params.hA > 0 && sim.currentTemperature < sim.params.Ta) {
+         sim.currentTemperature = sim.params.Ta;
+     }
+
+    if (isHeating && sim.currentTemperature >= sim.targetTemperature) {
+        sim.currentTemperature = sim.targetTemperature;
+        updateUI();
+        setState("finished");
+    } else {
+        updateUI();
+    }
+}
 
 // --- State Transition Logic ---
-function setState(newState) { /* ... same as before ... */ }
+function setState(newState) {
+    if (state === newState) return;
+    const previousState = state;
+    state = newState;
+    console.log(`State transition: ${previousState} -> ${newState}`);
+
+    updateUIForStateChange();
+
+    if (newState === 'idle') {
+        stopSimulation();
+        updateControlsOnIdle();
+    } else {
+        if (previousState === 'idle') {
+            startSimulation();
+        }
+        if (newState === 'finished') {
+            playChime();
+            beginFlash();
+        }
+    }
+    updateUI(); // Update UI immediately after state change
+}
 
 // --- Simulation Control ---
-function startSimulation() { /* ... same as before ... */ }
-function stopSimulation() { /* ... same as before ... */ }
+function startSimulation() {
+    if (simulationInterval) return;
+    console.log("Starting simulation interval");
+    sim.lastTickTime = Date.now();
+    simulationInterval = setInterval(simulationStep, SIMULATION_INTERVAL_MS);
+}
+
+function stopSimulation() {
+    if (simulationInterval) {
+        console.log("Stopping simulation interval");
+        clearInterval(simulationInterval);
+        simulationInterval = null;
+    }
+    stopFlash();
+}
 
 // --- Actions ---
-// *** UPDATED startAction with refined reason ***
 function startAction() {
     console.log("----- Start Action -----");
     console.log("Current state:", state);
@@ -253,45 +452,119 @@ function startAction() {
 
 
     const initialEstimate = estimateRemainingTime(sim.params, sim.currentTemperature);
-    // The estimate function now logs its internal steps
+    // estimateRemainingTime now logs internally
 
-    // Check if start >= target or estimate is invalid/infinite
     if (sim.params.T0 >= sim.params.Tt || initialEstimate === null || isNaN(initialEstimate) || !isFinite(initialEstimate)) {
-         let reason = "Unknown Error"; // Default reason
-         if (sim.params.T0 >= sim.params.Tt || initialEstimate === null) {
-             reason = "Start ≥ Target";
-         } else if (isNaN(initialEstimate)) {
-             reason = "Invalid Calculation"; // NaN occurred
-         } else if (!isFinite(initialEstimate)) {
-             reason = "∞ (Unreachable)"; // Infinity occurred
-         }
-         $('info').textContent = reason; // Update UI with specific reason
+         let reason = "Unknown Error";
+         if (sim.params.T0 >= sim.params.Tt || initialEstimate === null) { reason = "Start ≥ Target"; }
+         else if (isNaN(initialEstimate)) { reason = "Invalid Calculation"; }
+         else if (!isFinite(initialEstimate)) { reason = "∞ (Unreachable)"; }
+         $('info').textContent = reason;
          console.warn("Start failed:", reason);
          console.log("------------------------");
          return;
     }
 
-    // If all checks pass, proceed
     console.log("Starting simulation...");
     setState("heating");
     console.log("------------------------");
 }
 
-function pauseAction() { /* ... same as before ... */ }
-function resumeAction() { /* ... same as before ... */ }
-function stopAction() { /* ... same as before ... */ }
+function pauseAction() {
+    if (state === 'heating') {
+        setState('paused');
+    }
+}
+
+function resumeAction() {
+    if (state === 'paused') {
+        sim.lastTickTime = Date.now(); // Prevent large delta jump
+        setState('heating');
+    }
+}
+
+function stopAction() {
+    if (state !== 'idle') {
+        setState('idle');
+    }
+}
 
 // --- Audio & Visual Feedback ---
 let audioCtx = null;
-function playChime(){ /* ... same as before ... */ }
-function beginFlash(){ /* ... same as before ... */ }
-function stopFlash(){ /* ... same as before ... */ }
+function playChime(){
+  try {
+    if (!audioCtx || audioCtx.state === 'closed') { // Create or recreate if closed
+      audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+    }
+    // Short fade-in/out to prevent clicks
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(1047, now); // C6
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.3, now + 0.05); // Quick fade in
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.8); // Fade out
+    o.connect(g).connect(audioCtx.destination);
+    o.start(now);
+    o.stop(now + 1);
+
+    // Optional: Close context after sound plays to conserve resources?
+    // setTimeout(() => { if (audioCtx && audioCtx.state === 'running') audioCtx.close(); }, 1500);
+
+  } catch (e) { console.error("Audio playback failed:", e); }
+}
+
+function beginFlash(){
+  if (flashInterval) return;
+  let on = false;
+  flashInterval = setInterval(() => {
+    on = !on;
+    document.body.classList.toggle('flash-green', on);
+  }, 500);
+}
+
+function stopFlash(){
+    if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+        document.body.classList.remove('flash-green');
+    }
+}
 
 // --- Event Binding ---
 $('startBtn').addEventListener('click', startAction);
-$('progressWrap').addEventListener('click', () => { /* ... same as before ... */ });
-document.body.addEventListener('click', (e) => { /* ... same as before ... */ });
-[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => { /* ... same as before ... */ });
+
+$('progressWrap').addEventListener('click', () => {
+    if (state === 'heating') {
+        pauseAction();
+    } else if (state === 'paused') {
+        resumeAction();
+    }
+});
+
+document.body.addEventListener('click', (e) => {
+    const isProgressClick = e.target === $('progressWrap') || $('progressWrap').contains(e.target);
+    const isControlClick = e.target.closest('#controls') || e.target === $('startBtn');
+
+    if (!isProgressClick && !isControlClick && state !== 'idle') {
+       stopAction();
+    }
+});
+
+[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+  el.addEventListener('input', () => {
+      if (state === 'idle') {
+          updateControlsOnIdle();
+      }
+  });
+  el.addEventListener('change', () => {
+       if (state === 'idle') {
+           saveSettings();
+           updateControlsOnIdle();
+       }
+  });
+});
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', (event) => {
@@ -301,6 +574,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     setState("idle");
     console.log("Initialization complete.");
 });
+
 window.addEventListener('beforeunload', () => { stopSimulation(); });
 
 </script>
