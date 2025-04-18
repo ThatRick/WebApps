@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – togglable heating/cooling</title>
+<title>Microwave Timer – non-resetting progress</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
@@ -46,8 +45,7 @@ input[type=number]:focus{outline:none;border-color:var(--fill-end);
   color:#000;border:none;font-size:1.25rem;font-weight:600;}
 #startBtn:active{transform:translateY(1px);}
 #progressWrap{background:var(--track);display:none;overflow:hidden;position:relative;cursor:pointer;}
-#progressBar{height:100%;width:0%;background:linear-gradient(90deg,var(--fill-start),var(--fill-end));
-  transition:width 1s linear;}
+#progressBar{height:100%;width:0%;background:linear-gradient(90deg,var(--fill-start),var(--fill-end));}
 #barLabel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-family:var(--mono);font-size:1.4rem;color:#fff;text-shadow:0 0 4px rgba(0,0,0,.6);
   pointer-events:none;}
@@ -63,7 +61,7 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:.8rem;color:v
   <h1>Microwave Timer<small>toggle heat/cool</small></h1>
 </header>
 <div id="card">
-  <form id="calcForm">
+  <form>
     <div class="field">
       <label>Start <span id="startVal" class="value-display">13 °C</span></label>
       <input type="range" id="startTemp" min="5" max="20" step="0.1" value="13">
@@ -74,11 +72,11 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:.8rem;color:v
     </div>
     <details>
       <summary>Advanced</summary>
-      <label>Water mass (g)<input type="number" id="waterMass" value="303" step="1"></label>
-      <label>Mug mass (g)<input type="number" id="mugMass" value="250" step="1"></label>
-      <label>P₀ (W)<input type="number" id="power0" value="600" step="10"></label>
-      <label>hA (W / °C)<input type="number" id="heatLoss" value="1.1" step="0.1"></label>
-      <label>Room T (°C)<input type="number" id="roomTemp" value="22" step="0.1"></label>
+      <label>Water mass (g)<input id="waterMass" type="number" value="303" step="1"></label>
+      <label>Mug mass (g)<input id="mugMass" type="number" value="250" step="1"></label>
+      <label>P₀ (W)<input id="power0" type="number" value="600" step="10"></label>
+      <label>hA (W / °C)<input id="heatLoss" type="number" value="1.1" step="0.1"></label>
+      <label>Room T (°C)<input id="roomTemp" type="number" value="22" step="0.1"></label>
     </details>
     <button type="button" id="startBtn">START</button>
     <div id="progressWrap"><div id="progressBar"></div><span id="barLabel"></span></div>
@@ -88,28 +86,18 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:.8rem;color:v
 </div>
 <footer>tap anywhere to stop flashing</footer>
 <script>
-const SETTINGS_KEY="microwaveTimerSettings";
-const cW=4186,cC=880;
-let heatInterval, coolInterval, flashInterval, sim, finishTime, state="idle";
-
-// Chime
-function playChime(){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const o=ctx.createOscillator(),g=ctx.createGain();
-  o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
-  o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
-}
-
-// Save/load
-function saveSettings(){
-  const d={start:+startTemp.value,target:+targetTemp.value,
+// persistence
+const KEY="microwaveTimerSettings";
+function save(){
+  localStorage.setItem(KEY,JSON.stringify({
+    start:+startTemp.value,target:+targetTemp.value,
     water:+waterMass.value,mug:+mugMass.value,
-    P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value};
-  localStorage.setItem(SETTINGS_KEY,JSON.stringify(d));
+    P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
+  }));
 }
-function loadSettings(){
+function load(){
   try{
-    const d=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");
+    const d=JSON.parse(localStorage.getItem(KEY)||"{}");
     if(d.start) startTemp.value=d.start;
     if(d.target) targetTemp.value=d.target;
     if(d.water) waterMass.value=d.water;
@@ -120,144 +108,150 @@ function loadSettings(){
   }catch{}
 }
 
-// Utils
+// helpers
 const $=id=>document.getElementById(id);
 function fmtTime(s){
   s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;
   return m? m+":"+sec.toString().padStart(2,"0") : sec.toString();
 }
 
-// Model
-function getParams(){
+// model
+const cW=4186, cC=880;
+function params(){
   const T0=+startTemp.value,Tt=+targetTemp.value;
   const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
   const P0=+power0.value,hA=+heatLoss.value,Ta=+roomTemp.value;
-  return {T0,Tt,P0,hA,Ta,MC:mW*cW + mM*cC};
+  return {T0,Tt,P0,hA,Ta,MC:mW*cW+mM*cC};
 }
 function predictTime(p){
   if(p.Tt<=p.T0) return null;
   if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
-  return (p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
+  return (p.MC/p.hA)*Math.log(
+    (p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta))
+  );
 }
 
-// Status update
-function updateStatus(){
-  const st=$('status');
-  if(state==="heating") st.textContent="Heating";
-  else if(state==="paused") st.textContent="Paused";
-  else st.textContent="";
-}
+// state
+let heating=null, cooling=null, flashing=null, sim=null, finish=null, state="idle";
 
-// UI reset
+// UI
+function statusTxt(){
+  if(state==="heating") return "Heating";
+  if(state==="paused") return "Paused";
+  return "";
+}
 function updateDisplay(){
   $('startVal').textContent=startTemp.value+" °C";
   $('targetVal').textContent=targetTemp.value+" °C";
-  const t=predictTime(getParams());
-  $('info').innerHTML=isFinite(t)? fmtTime(t)+" s" : "∞";
-  $('startBtn').style.display='block';
-  $('progressWrap').style.display='none';
-  $('progressBar').style.width='0%';
+  const t=predictTime(params());
+  $('info').textContent=isFinite(t)? fmtTime(t)+" s" : "∞";
+  $('startBtn').style.display="block";
+  $('progressWrap').style.display="none";
+  $('progressBar').style.width="0%";
   $('barLabel').textContent="";
+  $('status').textContent="";
   clearAll();
-  state="idle"; updateStatus();
-  saveSettings();
+  state="idle"; save();
 }
 
-// Start heating
-function startTimer(){
+// simulation
+function start(){
   updateDisplay();
-  const p=getParams(), total=predictTime(p);
+  const p=params(), total=predictTime(p);
   if(!isFinite(total)) return;
-  sim={p,start:Date.now(),tTotal:total};
-  finishTime=null;
-  state="heating"; updateStatus();
-  $('startBtn').style.display='none';
-  $('progressWrap').style.display='block';
-  heatTick(); heatInterval=setInterval(heatTick,1000);
+  sim={p,startTime:Date.now(),total};
+  finish=null; state="heating";
+  $('status').textContent=statusTxt();
+  $('startBtn').style.display="none";
+  $('progressWrap').style.display="block";
+  stepHeat();
+  heating=setInterval(stepHeat,1000);
 }
-
-// Heat tick
-function heatTick(){
-  const {p,start,tTotal}=sim;
-  const elapsed=(Date.now()-start)/1000;
-  const rem=Math.max(0,tTotal-elapsed);
-  $('progressBar').style.width=Math.min(100*elapsed/tTotal,100)+'%';
-  const T=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
+function stepHeat(){
+  const {p,startTime,total} = sim;
+  const elapsed=(Date.now()-startTime)/1000;
+  const rem=Math.max(0,total-elapsed);
+  // temperature
+  const T = p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta)) * Math.exp(-p.hA*elapsed/p.MC);
+  // progress by temp fraction
+  const frac = (T - p.Ta)/(p.Tt - p.Ta)*100;
+  $('progressBar').style.width = Math.min(frac,100)+'%';
   $('barLabel').textContent=T.toFixed(1)+"°";
-  $('info').innerHTML=fmtTime(rem)+" s";
-  if(rem<=0){ // done
-    clearInterval(heatInterval);
-    state="paused"; updateStatus();
-    $('info').innerHTML="0 s";
-    $('barLabel').textContent=p.Tt.toFixed(1)+"°";
+  $('info').textContent = fmtTime(rem)+" s";
+  $('status').textContent = statusTxt();
+  if(rem<=0){
+    clearInterval(heating);
+    state="paused"; $('status').textContent=statusTxt();
+    $('info').textContent="0 s";
     playChime(); beginFlash();
-    finishTime=Date.now();
-    coolInterval=setInterval(coolTick,1000);
+    finish=Date.now();
+    cooling=setInterval(stepCool,1000);
   }
 }
-
-// Cooling tick
-function coolTick(){
-  const {p}=sim;
-  const elapsed=(Date.now()-finishTime)/1000;
-  const T=p.Ta + (p.Tt-p.Ta)*Math.exp(-p.hA*elapsed/p.MC);
+function stepCool(){
+  const {p} = sim;
+  const elapsed=(Date.now()-finish)/1000;
+  const T = p.Ta + (p.Tt-p.Ta)*Math.exp(-p.hA*elapsed/p.MC);
+  const frac = (T - p.Ta)/(p.Tt - p.Ta)*100;
+  $('progressBar').style.width = Math.min(frac,100)+'%';
   $('barLabel').textContent=T.toFixed(1)+"°";
 }
+// toggle on click
+$('progressWrap').addEventListener('click',()=>{
+  if(state==="heating"){
+    clearInterval(heating);
+    state="paused";
+    $('status').textContent=statusTxt();
+    finish=Date.now();
+    cooling=setInterval(stepCool,1000);
+  } else if(state==="paused"){
+    clearInterval(cooling);
+    const {p} = sim;
+    // adjust startTime to reflect elapsed heat
+    const current = parseFloat($('barLabel').textContent);
+    // invert heating equation to find elapsed so far
+    const elapsed = - (p.MC/p.hA) * Math.log(
+      (p.P0/p.hA - (current - p.Ta)) / (p.P0/p.hA - (p.T0-p.Ta))
+    );
+    sim.startTime = Date.now() - elapsed*1000;
+    state="heating";
+    $('status').textContent=statusTxt();
+    heating=setInterval(stepHeat,1000);
+    stepHeat();
+  }
+});
 
-// Pause heating and start cooling
-function pauseHeating(){
-  if(state!=="heating") return;
-  clearInterval(heatInterval);
-  const {p,start}=sim;
-  const elapsed=(Date.now()-start)/1000;
-  const Tcur=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-  sim.p.T0=Tcur;
-  state="paused"; updateStatus();
-  finishTime=Date.now(); coolInterval=setInterval(coolTick,1000);
+// play chime, flash
+function playChime(){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
+  o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
 }
-
-// Resume heating from pause
-function resumeHeating(){
-  if(state!=="paused") return;
-  clearInterval(coolInterval);
-  const {p}=sim;
-  const remTime=predictTime(p);
-  sim.start=Date.now(); sim.tTotal=remTime;
-  state="heating"; updateStatus();
-  heatTick(); heatInterval=setInterval(heatTick,1000);
-}
-
-// Flashing
 function beginFlash(){
   let on=false;
-  flashInterval=setInterval(()=>{
+  flashing=setInterval(()=>{
     on=!on; document.body.classList.toggle('flash-green',on);
   },500);
 }
 function stopFlash(){
-  clearInterval(flashInterval); clearInterval(coolInterval);
+  clearInterval(flashing); clearInterval(cooling);
   document.body.classList.remove('flash-green');
 }
-
-// Clear intervals
+// clear
 function clearAll(){
-  clearInterval(heatInterval); clearInterval(coolInterval); clearInterval(flashInterval);
+  clearInterval(heating); clearInterval(cooling); clearInterval(flashing);
 }
 
-// Events
+// events
 document.body.addEventListener('click',stopFlash);
-$('startBtn').addEventListener('click',startTimer);
-$('progressWrap').addEventListener('click',()=>{
-  if(state==="heating") pauseHeating();
-  else if(state==="paused") resumeHeating();
-});
+$('startBtn').addEventListener('click',start);
 [startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
   el.addEventListener('input',updateDisplay);
   el.addEventListener('change',updateDisplay);
 });
 
-// Init
-loadSettings(); updateDisplay();
+load(); updateDisplay();
 </script>
 </body>
 </html>
