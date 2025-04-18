@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Microwave Timer – fixed start/progress display</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #0d0d0d;
+  --card: #161616;
+  --text: #e8e8e8;
+  --muted: #7a7a7a;
+  --track: #1f1f1f;
+  --fill-start: #005f99;
+  --fill-end: #008644;
+  --radius: 14px;
+  --space: clamp(0.9rem,3vw,1.4rem);
+  --mono: 'SFMono-Regular','Consolas','Liberation Mono',monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: var(--space);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: background-color 0.2s ease-in-out; /* Smooth transition for flash */
+}
+header { text-align: center; margin-bottom: clamp(1.2rem,4vw,2rem); }
+h1 { font-size: clamp(1.6rem,4vw,2rem); font-weight: 600; }
+h1 small { display: block; font-size: .78em; color: var(--muted); }
+#card {
+  background: var(--card);
+  padding: var(--space);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.field { margin-top: var(--space); }
+label {
+  display: block;
+  margin-bottom: .25rem;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+input[type=range] {
+  width: 100%;
+  height: 6px;
+  background: #444;
+  border-radius: 4px;
+  outline: none;
+  appearance: none;
+  margin: .35rem 0;
+}
+input[type=range]::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--fill-end);
+  border: none;
+  cursor: pointer;
+}
+.value-display {
+  margin-left: .4rem;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text);
+}
+details {
+  margin-top: var(--space);
+  border-top: 1px dashed #333;
+  padding-top: var(--space);
+}
+summary {
+  cursor: pointer;
+  color: var(--fill-end);
+  font-weight: 500;
+}
+input[type=number] {
+  width: 100%;
+  padding: .6rem .8rem;
+  margin-top: .25rem;
+  font-size: 1rem;
+  border: 1px solid #333;
+  border-radius: var(--radius);
+  background: #000;
+  color: var(--text);
+}
+#startBtn {
+  width: 100%;
+  height: 54px;
+  margin-top: var(--space);
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--fill-start), var(--fill-end));
+  border: none;
+  color: #000;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+#progressWrap {
+  width: 100%;
+  height: 54px;
+  margin-top: var(--space);
+  border-radius: var(--radius);
+  background: var(--track);
+  overflow: hidden;
+  position: relative;
+  display: none; /* Initially hidden */
+  cursor: pointer; /* Indicate interactivity */
+}
+#progressBar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--fill-start), var(--fill-end));
+  transition: width 0.15s linear; /* Smooth progress */
+}
+#barLabel {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0,0,0,0.6);
+  pointer-events: none; /* Allow clicks on wrapper */
+}
+#status {
+  margin-top: var(--space);
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--muted);
+  min-height: 1.2em; /* Prevent layout shifts */
+}
+#info {
+  margin-top: var(--space);
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 2.4rem;
+  min-height: 1.2em; /* Prevent layout shifts */
+}
+footer {
+  margin-top: var(--space);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Style for flashing background */
+body.flash-green {
+  background-color: var(--fill-end); /* Use one of the fill colors */
+  /* transition added to body style above */
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Microwave Timer<small>display fix</small></h1>
+</header>
+<div id="card">
+  <div id="controls">
+    <div class="field">
+      <label>Start <span id="startVal" class="value-display">13 °C</span></label>
+      <input id="startTemp" type="range" min="5" max="20" step="0.1" value="13">
+    </div>
+    <div class="field">
+      <label>Target <span id="targetVal" class="value-display">80 °C</span></label>
+      <input id="targetTemp" type="range" min="75" max="90" step="1" value="80">
+    </div>
+    <details>
+      <summary>Advanced</summary>
+      <label>Water mass (g)<input id="waterMass" type="number" value="303" step="1"></label>
+      <label>Mug mass (g)<input id="mugMass" type="number" value="250" step="1"></label>
+      <label>P₀ (W)<input id="power0" type="number" value="600" step="10"></label>
+      <label>hA (W / °C)<input id="heatLoss" type="number" value="1.1" step="0.1"></label>
+      <label>Room T (°C)<input id="roomTemp" type="number" value="22" step="0.1"></label>
+    </details>
+  </div>
+  <button id="startBtn" type="button">START</button>
+  <div id="progressWrap"><div id="progressBar"></div><span id="barLabel"></span></div>
+  <div id="status"></div>
+  <div id="info"></div>
+</div>
+<footer>tap anywhere (except progress bar) to stop flashing/cooling</footer>
+
+<script>
+// --- START OF REFACTORED SCRIPT SECTION ---
+
+// persistence
+const KEY="microwaveTimerSettings";
+function saveSettings(){
+  localStorage.setItem(KEY, JSON.stringify({
+    start:+startTemp.value,target:+targetTemp.value,
+    water:+waterMass.value,mug:+mugMass.value,
+    P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
+  }));
+}
+function loadSettings(){
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY)||"{}");
+    if(d.start) startTemp.value=d.start;
+    if(d.target) targetTemp.value=d.target;
+    if(d.water) waterMass.value=d.water;
+    if(d.mug) mugMass.value=d.mug;
+    if(d.P0) power0.value=d.P0;
+    if(d.hA) heatLoss.value=d.hA;
+    if(d.room) roomTemp.value=d.room;
+  }catch(e){
+      console.error("Error loading settings:", e);
+  }
+}
+
+// helpers
+const $=id=>document.getElementById(id);
+function fmtTime(s){
+  s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;
+  return m? m+":"+sec.toString().padStart(2,"0") : sec.toString();
+}
+
+// model
+const cW=4186, cC=880; // Specific heat capacities (Water, Ceramic/Glass) J/(kg*C)
+function getParams(){
+  const T0=+startTemp.value, Tt=+targetTemp.value,
+        mW=+waterMass.value/1000, mM=+mugMass.value/1000,
+        P0=+power0.value, hA=+heatLoss.value, Ta=+roomTemp.value;
+  return {T0,Tt,P0,hA,Ta,MC:mW*cW + mM*cC}; // MC = effective heat capacity
+}
+function predictTime(p){
+  if(p.Tt<=p.T0) return null; // Target must be higher than start
+  const equilibriumTempRise = p.P0 / p.hA; // Max temp rise above ambient due to power input
+  const maxReachableTemp = p.Ta + equilibriumTempRise;
+  if (p.P0 <= 0 || p.hA <= 0) { // Handle edge cases
+      if (p.P0 > 0 && p.hA <= 0) return Infinity; // No heat loss, keeps heating
+      if (p.P0 <= 0 && p.hA > 0 && p.Tt > p.T0) return Infinity; // No power, can't heat up
+      if (p.P0 <= 0 && p.hA <= 0 && p.Tt > p.T0) return Infinity; // No power, no loss, can't heat up
+      if (p.Tt <= p.T0) return null; // Already handled, but for clarity
+  }
+  // Check if target temp is reachable
+  if (p.Tt > maxReachableTemp) return Infinity;
+
+  // Derived from solving the differential equation: MC * dT/dt = P0 - hA * (T - Ta)
+  // Ensure arguments to log are positive
+  const numerator = p.P0 - p.hA * (p.T0 - p.Ta);
+  const denominator = p.P0 - p.hA * (p.Tt - p.Ta);
+
+  if (numerator <= 0 || denominator <= 0) {
+      // This condition should ideally be caught by the maxReachableTemp check,
+      // but floating point inaccuracies might occur.
+      // If numerator is non-positive, T0 might already be at or above equilibrium.
+      // If denominator is non-positive, Tt is at or above equilibrium.
+      console.warn("Log argument non-positive, check physics:", {numerator, denominator, T0:p.T0, Tt:p.Tt, maxReachableTemp});
+      return Infinity;
+  }
+
+  return (p.MC/p.hA) * Math.log(numerator / denominator);
+}
+
+function calculateTemp(p, elapsed, startTemp) {
+  // Calculate temperature after 'elapsed' seconds starting from 'startTemp'
+  const T0_eff = startTemp !== undefined ? startTemp : p.T0; // Use provided startTemp or original T0
+  if (p.P0 <= 0) { // No power input
+      return calculateCoolingTemp(p, elapsed, T0_eff); // Just cools down
+  }
+  if (p.hA <= 0) { // No heat loss
+       return T0_eff + (p.P0 / p.MC) * elapsed;
+  }
+  const equilibriumTempRise = p.P0 / p.hA;
+  const maxReachableTemp = p.Ta + equilibriumTempRise;
+
+  // dT/dt = (P0 - hA*(T-Ta)) / MC
+  // Solution: T(t) = Ta + P0/hA - (P0/hA - (T0_eff - Ta)) * exp(-hA*t/MC)
+  return p.Ta + equilibriumTempRise - (equilibriumTempRise - (T0_eff - p.Ta)) * Math.exp(-p.hA * elapsed / p.MC);
+}
+
+function calculateCoolingTemp(p, elapsed, startTemp) {
+    // Calculate temperature after 'elapsed' seconds of cooling starting from 'startTemp'
+    // Solution to MC * dT/dt = -hA * (T - Ta)
+    // T(t) = Ta + (startTemp - Ta) * exp(-hA*t/MC)
+    if (p.hA <= 0) return startTemp; // No heat loss, temp stays constant
+    return p.Ta + (startTemp - p.Ta) * Math.exp(-p.hA * elapsed / p.MC);
+}
+
+
+// --- State Management ---
+let state = "idle"; // "idle", "heating", "paused", "finished"
+let timerInterval = null; // General interval (heating or cooling)
+let flashInterval = null;
+let sim = {
+    params: null,           // Parameters used for the current run {T0, Tt, P0, hA, Ta, MC}
+    totalDuration: 0,       // Original total calculated duration
+    startTime: 0,           // Timestamp when the current segment (heating/cooling/pause) started
+    resumeTimeOffset: 0,    // Total time already spent heating before the current segment
+    pauseTemperature: 0,    // Temperature when paused or finished
+    pausedProgress: 0       // Progress percentage when paused
+};
+
+// UI initial and update
+function updateControls(){
+  $('startVal').textContent = startTemp.value+" °C";
+  $('targetVal').textContent = targetTemp.value+" °C";
+  const p = getParams();
+  const t = predictTime(p);
+  $('info').textContent = t === null ? "Start ≥ Target" : isFinite(t) ? fmtTime(t)+" s" : "∞";
+  // Only save if not actively running
+  if (state === "idle") {
+    saveSettings();
+  }
+}
+
+function setState(newState){
+  state = newState;
+  clearAllIntervals(); // Clear intervals when changing state
+
+  switch(state) {
+    case "idle":
+      $('startBtn').style.display = 'block';
+      $('progressWrap').style.display = 'none';
+      $('status').textContent = "";
+      $('controls').style.display = 'block'; // Show controls
+      document.body.classList.remove('flash-green'); // Ensure flash is off
+      updateControls(); // Recalculate time based on current settings
+      break;
+    case "heating":
+      $('startBtn').style.display = 'none';
+      $('progressWrap').style.display = 'block';
+      $('status').textContent = "Heating";
+      $('controls').style.display = 'none'; // Hide controls during run
+      document.body.classList.remove('flash-green');
+      timerInterval = setInterval(heatingStep, 200); // Update frequently for smoother bar
+      heatingStep(); // Immediate update
+      break;
+    case "paused":
+      $('startBtn').style.display = 'none';
+      $('progressWrap').style.display = 'block';
+      $('status').textContent = "Paused (Tap progress bar to resume)";
+      $('controls').style.display = 'none'; // Keep controls hidden
+      // Freeze progress bar at paused state
+      $('progressBar').style.width = sim.pausedProgress + '%';
+      $('barLabel').textContent = sim.pauseTemperature.toFixed(1) + "°";
+      // Optional: Show cooling effect during pause - uncomment if desired
+      // sim.startTime = Date.now(); // Set start time for cooling calc during pause
+      // timerInterval = setInterval(coolingStep, 1000);
+      // coolingStep(); // Immediate update
+      break;
+    case "finished":
+       $('startBtn').style.display = 'none'; // Or maybe a "Reset" button?
+       $('progressWrap').style.display = 'block';
+       $('status').textContent = "Finished!";
+       $('controls').style.display = 'none'; // Keep controls hidden
+       // Keep final state displayed
+       $('progressBar').style.width = '100%';
+       $('barLabel').textContent = sim.params.Tt.toFixed(1) + "°";
+       $('info').textContent = "0 s";
+       playChime();
+       beginFlash();
+       // Start cooling calculation from finished state
+       sim.startTime = Date.now(); // Start time for cooling phase
+       sim.pauseTemperature = sim.params.Tt; // Starting temp for cooling
+       timerInterval = setInterval(coolingStep, 1000); // Update cooling display
+       coolingStep(); // Immediate update
+       break;
+  }
+}
+
+// --- Timer Logic ---
+
+function startHeating(){
+  updateControls(); // Ensure latest values are used
+  const p = getParams();
+  const total = predictTime(p);
+
+  if (total === null || !isFinite(total)) {
+      $('info').textContent = total === null ? "Start ≥ Target" : "∞ (Cannot reach target)";
+      return; // Don't start if impossible
+  }
+
+  sim = {
+      params: p,
+      totalDuration: total,
+      startTime: Date.now(),
+      resumeTimeOffset: 0, // Starting fresh
+      pauseTemperature: p.T0, // Initially T0
+      pausedProgress: 0
+  };
+
+  setState("heating");
+}
+
+function heatingStep(){
+  const now = Date.now();
+  const elapsedSinceSegmentStart = (now - sim.startTime) / 1000;
+  const totalElapsedHeatingTime = sim.resumeTimeOffset + elapsedSinceSegmentStart;
+
+  if (totalElapsedHeatingTime >= sim.totalDuration) {
+    // Finished
+    sim.pauseTemperature = sim.params.Tt; // Ensure final temp is target
+    sim.pausedProgress = 100;
+    setState("finished");
+    return;
+  }
+
+  const currentTemp = calculateTemp(sim.params, totalElapsedHeatingTime, sim.params.T0);
+  const remainingTime = sim.totalDuration - totalElapsedHeatingTime;
+  const progress = Math.min(100, (totalElapsedHeatingTime / sim.totalDuration) * 100);
+
+  $('progressBar').style.width = progress + '%';
+  $('barLabel').textContent = currentTemp.toFixed(1) + "°";
+  $('info').textContent = fmtTime(remainingTime) + " s";
+
+  // Store current state for potential pause
+  sim.pauseTemperature = currentTemp;
+  sim.pausedProgress = progress;
+}
+
+function pauseHeating() {
+    if (state !== "heating") return;
+
+    const now = Date.now();
+    const elapsedSinceSegmentStart = (now - sim.startTime) / 1000;
+    sim.resumeTimeOffset += elapsedSinceSegmentStart; // Accumulate heated time
+
+    // The current temp/progress were already stored in heatingStep
+    // State transition handles interval clearing and UI updates
+    setState("paused");
+}
+
+function resumeHeating() {
+    if (state !== "paused") return;
+
+    // Stop any potential cooling timer if it was running during pause
+    clearInterval(timerInterval);
+    timerInterval = null;
+
+    // Set start time for the *next* heating segment
+    sim.startTime = Date.now();
+
+    // State transition handles interval starting and UI updates
+    setState("heating");
+}
+
+function coolingStep() {
+    // This runs *after* finishing or during pause (if enabled)
+    const now = Date.now();
+    const elapsedSinceCoolStart = (now - sim.startTime) / 1000; // startTime is set on finish/pause
+
+    // Calculate cooling from the temperature at the start of this phase (finish temp or pause temp)
+    const currentTemp = calculateCoolingTemp(sim.params, elapsedSinceCoolStart, sim.pauseTemperature);
+
+    // Only update the temperature label. Progress bar stays at 100% (finished) or paused value.
+     $('barLabel').textContent = currentTemp.toFixed(1) + "°";
+
+     // Could potentially stop cooling if temp reaches room temp
+     // if (currentTemp <= sim.params.Ta + 0.1) {
+     //     clearInterval(timerInterval);
+     //     timerInterval = null;
+     //     $('barLabel').textContent = sim.params.Ta.toFixed(1) + "°"; // Show final room temp
+     // }
+}
+
+
+// --- Audio & Visual Feedback ---
+let audioCtx = null; // Reuse audio context
+function playChime(){
+  try {
+    if (!audioCtx) {
+      audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+    }
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(1047, audioCtx.currentTime); // C6
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8); // Fade out
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + 1);
+  } catch (e) {
+    console.error("Audio playback failed:", e);
+  }
+}
+
+function beginFlash(){
+  let on = false;
+  clearInterval(flashInterval); // Clear previous flash if any
+  flashInterval = setInterval(() => {
+    on = !on;
+    document.body.classList.toggle('flash-green', on);
+  }, 500);
+}
+
+function stopFlashAndCooling(){
+    // Stop the flashing effect
+    clearInterval(flashInterval);
+    flashInterval = null;
+    document.body.classList.remove('flash-green');
+
+    // Stop the cooling calculation/display timer if it's running
+    if (state === "finished") { // Only stop cooling if we were in finished state
+        clearInterval(timerInterval);
+        timerInterval = null;
+        // Decide what to do next - maybe reset to idle?
+        // setState("idle"); // Uncomment to go back to setup screen
+    }
+}
+
+// --- Interval Management ---
+function clearAllIntervals() {
+    clearInterval(timerInterval);
+    clearInterval(flashInterval);
+    timerInterval = null;
+    flashInterval = null;
+}
+
+// --- Event Binding ---
+$('startBtn').addEventListener('click', startHeating);
+
+$('progressWrap').addEventListener('click', () => {
+  if (state === "heating") {
+    pauseHeating();
+  } else if (state === "paused") {
+    resumeHeating();
+  }
+  // Clicks on progress bar during finished state do nothing here anymore
+  // (stopFlashAndCooling moved to body click)
+});
+
+// Stop flashing/cooling on any body click *except* the progress bar
+document.body.addEventListener('click', (e) => {
+    // Check if the click target is the progress bar or inside it
+    const isProgressClick = e.target === $('progressWrap') || $('progressWrap').contains(e.target);
+
+    if (!isProgressClick && (state === "finished" || flashInterval)) {
+       stopFlashAndCooling();
+       // Optionally reset to idle state after stopping flash/cool
+       // setState("idle");
+    } else if (!isProgressClick && state === "idle") {
+       // Allow interaction with controls if idle
+    } else if (!isProgressClick && (state === "heating" || state === "paused")) {
+        // Clicking outside progress bar could potentially pause/stop? (currently does nothing)
+        // Example: pauseHeating();
+    }
+});
+
+// Update controls on input/change
+[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+  el.addEventListener('input', updateControls);
+  // 'change' is useful for number inputs after typing is done
+  el.addEventListener('change', updateControls);
+});
+
+// --- Initialization ---
+loadSettings();
+setState("idle"); // Initialize state machine and UI
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    clearAllIntervals();
+    if (state !== 'idle') {
+        // Optionally save the running state? More complex.
+    }
+});
+
+// --- END OF REFACTORED SCRIPT SECTION ---
+</script>
+</body>
+</html>
