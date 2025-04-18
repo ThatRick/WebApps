@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – interruptible cooling</title>
+<title>Microwave Timer – togglable heating/cooling</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
@@ -18,42 +19,48 @@
   --mono:'SFMono-Regular','Consolas','Liberation Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  padding:var(--space);
-  display:flex;
-  flex-direction:column;
-  transition:background-color 0.25s;
-}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+     background:var(--bg);color:var(--text);padding:var(--space);
+     display:flex;flex-direction:column;transition:background-color .25s;}
 body.flash-green{background:#00d06c;}
 header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem);}
 h1{font-size:clamp(1.6rem,4vw,2rem);font-weight:600;}
-h1 small{display:block;font-size:0.78em;color:var(--muted);}
-#card{background:var(--card);padding:var(--space);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,0.35);flex:1 0 auto;}
+h1 small{display:block;font-size:.78em;color:var(--muted);}
+#card{background:var(--card);padding:var(--space);border-radius:var(--radius);
+      box-shadow:0 6px 18px rgba(0,0,0,.35);flex:1 0 auto;}
 .field{margin-top:var(--space);}
-label{font-size:1.05rem;color:var(--muted);margin-bottom:0.25rem;display:block;}
-input[type=range]{width:100%;margin:0.35rem 0;height:6px;background:#444;appearance:none;border-radius:4px;outline:none;}
-input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--fill-end);cursor:pointer;border:0;}
-.value-display{font-weight:600;color:var(--text);font-size:1.6rem;margin-left:0.4rem;}
+label{font-size:1.05rem;color:var(--muted);margin-bottom:.25rem;display:block;}
+input[type=range]{width:100%;margin:.35rem 0;height:6px;background:#444;appearance:none;
+  border-radius:4px;outline:none;}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;
+  border-radius:50%;background:var(--fill-end);cursor:pointer;border:0;}
+.value-display{font-weight:600;color:var(--text);font-size:1.6rem;margin-left:.4rem;}
 details{margin-top:var(--space);border-top:1px dashed #333;padding-top:var(--space);}
 summary{cursor:pointer;color:var(--fill-end);font-weight:500;}
-input[type=number]{font-size:1rem;padding:0.6rem 0.8rem;border:1px solid #333;border-radius:var(--radius);width:100%;margin-top:0.25rem;background:#000;color:var(--text);}
-input[type=number]:focus{outline:none;border-color:var(--fill-end);box-shadow:0 0 0 3px rgba(0,208,108,0.35);}
+input[type=number]{font-size:1rem;padding:.6rem .8rem;border:1px solid #333;
+  border-radius:var(--radius);width:100%;margin-top:.25rem;background:#000;color:var(--text);}
+input[type=number]:focus{outline:none;border-color:var(--fill-end);
+  box-shadow:0 0 0 3px rgba(0,208,108,.35);}
 #startBtn,#progressWrap{width:100%;height:54px;border-radius:var(--radius);margin-top:var(--space);}
-#startBtn{background:linear-gradient(90deg,var(--fill-start),var(--fill-end));color:#000;border:none;font-size:1.25rem;font-weight:600;}
+#startBtn{background:linear-gradient(90deg,var(--fill-start),var(--fill-end));
+  color:#000;border:none;font-size:1.25rem;font-weight:600;}
 #startBtn:active{transform:translateY(1px);}
 #progressWrap{background:var(--track);display:none;overflow:hidden;position:relative;cursor:pointer;}
-#progressBar{height:100%;width:0%;background:linear-gradient(90deg,var(--fill-start),var(--fill-end));transition:width 1s linear;}
-#barLabel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:1.4rem;color:#fff;text-shadow:0 0 4px rgba(0,0,0,0.6);pointer-events:none;}
-#info{display:block;margin-top:var(--space);font-size:2.4rem;text-align:center;font-family:var(--mono);}
-footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:var(--muted);}
+#progressBar{height:100%;width:0%;background:linear-gradient(90deg,var(--fill-start),var(--fill-end));
+  transition:width 1s linear;}
+#barLabel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:var(--mono);font-size:1.4rem;color:#fff;text-shadow:0 0 4px rgba(0,0,0,.6);
+  pointer-events:none;}
+#status{margin-top:var(--space);text-align:center;font-family:var(--mono);
+  font-size:1rem;color:var(--muted);}
+#info{display:block;margin-top:var(--space);font-size:2.4rem;text-align:center;
+  font-family:var(--mono);}
+footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:.8rem;color:var(--muted);}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>click bar to pause & cool</small></h1>
+  <h1>Microwave Timer<small>toggle heat/cool</small></h1>
 </header>
 <div id="card">
   <form id="calcForm">
@@ -75,6 +82,7 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
     </details>
     <button type="button" id="startBtn">START</button>
     <div id="progressWrap"><div id="progressBar"></div><span id="barLabel"></span></div>
+    <div id="status"></div>
     <output id="info"></output>
   </form>
 </div>
@@ -82,160 +90,174 @@ footer{text-align:center;margin-top:clamp(2rem,5vw,3rem);font-size:0.8rem;color:
 <script>
 const SETTINGS_KEY="microwaveTimerSettings";
 const cW=4186,cC=880;
-let heatInterval, coolInterval, flashInterval, sim, finishTime;
+let heatInterval, coolInterval, flashInterval, sim, finishTime, state="idle";
 
-// chime
+// Chime
 function playChime(){
   const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const o=ctx.createOscillator(), g=ctx.createGain();
+  const o=ctx.createOscillator(),g=ctx.createGain();
   o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
   o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
 }
 
-// storage
+// Save/load
 function saveSettings(){
-  const data={
-    start:+startTemp.value, target:+targetTemp.value,
-    water:+waterMass.value, mug:+mugMass.value,
-    P0:+power0.value, hA:+heatLoss.value, room:+roomTemp.value
-  };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+  const d={start:+startTemp.value,target:+targetTemp.value,
+    water:+waterMass.value,mug:+mugMass.value,
+    P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value};
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify(d));
 }
 function loadSettings(){
   try{
-    const data = JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");
-    if(data.start) startTemp.value=data.start;
-    if(data.target) targetTemp.value=data.target;
-    if(data.water) waterMass.value=data.water;
-    if(data.mug) mugMass.value=data.mug;
-    if(data.P0) power0.value=data.P0;
-    if(data.hA) heatLoss.value=data.hA;
-    if(data.room) roomTemp.value=data.room;
+    const d=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");
+    if(d.start) startTemp.value=d.start;
+    if(d.target) targetTemp.value=d.target;
+    if(d.water) waterMass.value=d.water;
+    if(d.mug) mugMass.value=d.mug;
+    if(d.P0) power0.value=d.P0;
+    if(d.hA) heatLoss.value=d.hA;
+    if(d.room) roomTemp.value=d.room;
   }catch{}
 }
 
-// utils
+// Utils
 const $=id=>document.getElementById(id);
 function fmtTime(s){
-  s=Math.max(0,Math.round(s)); const m=Math.floor(s/60), sec=s%60;
+  s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;
   return m? m+":"+sec.toString().padStart(2,"0") : sec.toString();
 }
 
-// model
+// Model
 function getParams(){
-  const T0=+startTemp.value, Tt=+targetTemp.value;
-  const mW=+waterMass.value/1000, mM=+mugMass.value/1000;
-  const P0=+power0.value, hA=+heatLoss.value, Ta=+roomTemp.value;
+  const T0=+startTemp.value,Tt=+targetTemp.value;
+  const mW=+waterMass.value/1000,mM=+mugMass.value/1000;
+  const P0=+power0.value,hA=+heatLoss.value,Ta=+roomTemp.value;
   return {T0,Tt,P0,hA,Ta,MC:mW*cW + mM*cC};
 }
 function predictTime(p){
   if(p.Tt<=p.T0) return null;
-  if(p.P0 <= p.hA*(p.Tt-p.Ta)) return Infinity;
-  return (p.MC/p.hA)*Math.log(
-    (p.P0 - p.hA*(p.T0-p.Ta)) / (p.P0 - p.hA*(p.Tt-p.Ta))
-  );
+  if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
+  return (p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
 }
 
-// UI update
+// Status update
+function updateStatus(){
+  const st=$('status');
+  if(state==="heating") st.textContent="Heating";
+  else if(state==="paused") st.textContent="Paused";
+  else st.textContent="";
+}
+
+// UI reset
 function updateDisplay(){
   $('startVal').textContent=startTemp.value+" °C";
   $('targetVal').textContent=targetTemp.value+" °C";
-  const t = predictTime(getParams());
-  $('info').innerHTML = isFinite(t)? fmtTime(t)+" s" : "∞";
+  const t=predictTime(getParams());
+  $('info').innerHTML=isFinite(t)? fmtTime(t)+" s" : "∞";
   $('startBtn').style.display='block';
   $('progressWrap').style.display='none';
   $('progressBar').style.width='0%';
   $('barLabel').textContent="";
-  clearIntervals();
+  clearAll();
+  state="idle"; updateStatus();
   saveSettings();
 }
 
-// start heating
+// Start heating
 function startTimer(){
   updateDisplay();
-  const p=getParams(), tTotal=predictTime(p);
-  if(!isFinite(tTotal)) return;
-  sim={p, start:Date.now(), tTotal};
-  finishTime = null;
+  const p=getParams(), total=predictTime(p);
+  if(!isFinite(total)) return;
+  sim={p,start:Date.now(),tTotal:total};
+  finishTime=null;
+  state="heating"; updateStatus();
   $('startBtn').style.display='none';
   $('progressWrap').style.display='block';
-  heatTick();
-  heatInterval = setInterval(heatTick, 1000);
+  heatTick(); heatInterval=setInterval(heatTick,1000);
 }
 
-// heating tick
+// Heat tick
 function heatTick(){
-  const {p, start, tTotal} = sim;
+  const {p,start,tTotal}=sim;
   const elapsed=(Date.now()-start)/1000;
-  const rem=Math.max(0, tTotal-elapsed);
-  $('progressBar').style.width = Math.min(100*elapsed/totalTime(tTotal),100)+'%';
-  // calculate temp
-  const T = p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-  $('barLabel').textContent = T.toFixed(1)+"°";
-  $('info').innerHTML = fmtTime(rem)+" s";
-  if(rem<=0){
+  const rem=Math.max(0,tTotal-elapsed);
+  $('progressBar').style.width=Math.min(100*elapsed/tTotal,100)+'%';
+  const T=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
+  $('barLabel').textContent=T.toFixed(1)+"°";
+  $('info').innerHTML=fmtTime(rem)+" s";
+  if(rem<=0){ // done
     clearInterval(heatInterval);
+    state="paused"; updateStatus();
     $('info').innerHTML="0 s";
     $('barLabel').textContent=p.Tt.toFixed(1)+"°";
-    playChime();
-    beginFlash();
-    finishTime = Date.now();
-    coolInterval = setInterval(coolTick,1000);
+    playChime(); beginFlash();
+    finishTime=Date.now();
+    coolInterval=setInterval(coolTick,1000);
   }
 }
 
-// cooling tick
+// Cooling tick
 function coolTick(){
-  const {p} = sim;
-  const elapsedCool=(Date.now()-finishTime)/1000;
-  const Tcool = p.Ta + (p.Tt-p.Ta)*Math.exp(-p.hA*elapsedCool/p.MC);
-  $('barLabel').textContent = Tcool.toFixed(1)+"°";
+  const {p}=sim;
+  const elapsed=(Date.now()-finishTime)/1000;
+  const T=p.Ta + (p.Tt-p.Ta)*Math.exp(-p.hA*elapsed/p.MC);
+  $('barLabel').textContent=T.toFixed(1)+"°";
 }
 
-// pause by clicking bar
-$('progressWrap').addEventListener('click', ()=>{
-  if(heatInterval){
-    clearInterval(heatInterval);
-    heatInterval = null;
-    finishTime = Date.now();
-    coolInterval = setInterval(coolTick,1000);
-  }
-});
+// Pause heating and start cooling
+function pauseHeating(){
+  if(state!=="heating") return;
+  clearInterval(heatInterval);
+  const {p,start}=sim;
+  const elapsed=(Date.now()-start)/1000;
+  const Tcur=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
+  sim.p.T0=Tcur;
+  state="paused"; updateStatus();
+  finishTime=Date.now(); coolInterval=setInterval(coolTick,1000);
+}
 
-// flashing
+// Resume heating from pause
+function resumeHeating(){
+  if(state!=="paused") return;
+  clearInterval(coolInterval);
+  const {p}=sim;
+  const remTime=predictTime(p);
+  sim.start=Date.now(); sim.tTotal=remTime;
+  state="heating"; updateStatus();
+  heatTick(); heatInterval=setInterval(heatTick,1000);
+}
+
+// Flashing
 function beginFlash(){
   let on=false;
   flashInterval=setInterval(()=>{
-    on=!on; document.body.classList.toggle('flash-green', on);
+    on=!on; document.body.classList.toggle('flash-green',on);
   },500);
 }
 function stopFlash(){
-  clearInterval(flashInterval);
-  clearInterval(coolInterval);
+  clearInterval(flashInterval); clearInterval(coolInterval);
   document.body.classList.remove('flash-green');
 }
 
-// clear all
-function clearIntervals(){
-  clearInterval(heatInterval);
-  clearInterval(coolInterval);
-  clearInterval(flashInterval);
+// Clear intervals
+function clearAll(){
+  clearInterval(heatInterval); clearInterval(coolInterval); clearInterval(flashInterval);
 }
 
-// helper for progress width
-function totalTime(t){ return t; }
-
-// events
-document.body.addEventListener('click', stopFlash);
-[startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
-  el.addEventListener('input', updateDisplay);
-  el.addEventListener('change', updateDisplay);
+// Events
+document.body.addEventListener('click',stopFlash);
+$('startBtn').addEventListener('click',startTimer);
+$('progressWrap').addEventListener('click',()=>{
+  if(state==="heating") pauseHeating();
+  else if(state==="paused") resumeHeating();
 });
-$('startBtn').addEventListener('click', startTimer);
+[startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
+  el.addEventListener('input',updateDisplay);
+  el.addEventListener('change',updateDisplay);
+});
 
-// init
-loadSettings();
-updateDisplay();
+// Init
+loadSettings(); updateDisplay();
 </script>
 </body>
 </html>
