@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer – fixed progress</title>
+<title>Microwave Timer – fixed start/progress display</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
@@ -26,9 +26,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: background 0.25s;
 }
-body.flash-green { background: #00d06c; }
 header { text-align: center; margin-bottom: clamp(1.2rem,4vw,2rem); }
 h1 { font-size: clamp(1.6rem,4vw,2rem); font-weight: 600; }
 h1 small { display: block; font-size: .78em; color: var(--muted); }
@@ -91,11 +89,6 @@ input[type=number] {
   background: #000;
   color: var(--text);
 }
-input[type=number]:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0,208,108,.35);
-  border-color: var(--fill-end);
-}
 #startBtn {
   width: 100%;
   height: 54px;
@@ -116,11 +109,7 @@ input[type=number]:focus {
   background: var(--track);
   overflow: hidden;
   position: relative;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-#card.running #progressWrap {
-  opacity: 1;
+  display: none;
 }
 #progressBar {
   height: 100%;
@@ -150,17 +139,11 @@ input[type=number]:focus {
   font-family: var(--mono);
   font-size: 2.4rem;
 }
-footer {
-  text-align: center;
-  margin-top: clamp(2rem,5vw,3rem);
-  font-size: .8rem;
-  color: var(--muted);
-}
 </style>
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>fixed progress</small></h1>
+  <h1>Microwave Timer<small>display fix</small></h1>
 </header>
 <div id="card">
   <div id="controls">
@@ -189,12 +172,12 @@ footer {
 <footer>tap anywhere to stop flashing</footer>
 <script>
 // persistence
-const KEY = "microwaveTimerSettings";
+const KEY="microwaveTimerSettings";
 function saveSettings(){
   localStorage.setItem(KEY, JSON.stringify({
-    start:+startTemp.value, target:+targetTemp.value,
-    water:+waterMass.value, mug:+mugMass.value,
-    P0:+power0.value, hA:+heatLoss.value, room:+roomTemp.value
+    start:+startTemp.value,target:+targetTemp.value,
+    water:+waterMass.value,mug:+mugMass.value,
+    P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
   }));
 }
 function loadSettings(){
@@ -211,15 +194,14 @@ function loadSettings(){
 }
 
 // helpers
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 function fmtTime(s){
-  s = Math.max(0, Math.round(s));
-  const m = Math.floor(s/60), sec = s%60;
+  s=Math.max(0,Math.round(s));const m=Math.floor(s/60),sec=s%60;
   return m? m+":"+sec.toString().padStart(2,"0") : sec.toString();
 }
 
 // model
-const cW = 4186, cC = 880;
+const cW=4186, cC=880;
 function getParams(){
   const T0=+startTemp.value, Tt=+targetTemp.value,
         mW=+waterMass.value/1000, mM=+mugMass.value/1000,
@@ -228,16 +210,14 @@ function getParams(){
 }
 function predictTime(p){
   if(p.Tt<=p.T0) return null;
-  if(p.P0 <= p.hA*(p.Tt-p.Ta)) return Infinity;
-  return (p.MC/p.hA)*Math.log(
-    (p.P0 - p.hA*(p.T0-p.Ta)) / (p.P0 - p.hA*(p.Tt-p.Ta))
-  );
+  if(p.P0<=p.hA*(p.Tt-p.Ta)) return Infinity;
+  return (p.MC/p.hA)*Math.log((p.P0-p.hA*(p.T0-p.Ta))/(p.P0-p.hA*(p.Tt-p.Ta)));
 }
 
 // state
-let heatInt, coolInt, flashInt, sim=null, finishTime=null, state="idle";
+let heatInt, coolInt, flashInt, sim,nullFinish, state="idle";
 
-// UI
+// UI initial and update
 function updateControls(){
   $('startVal').textContent = startTemp.value+" °C";
   $('targetVal').textContent = targetTemp.value+" °C";
@@ -246,102 +226,103 @@ function updateControls(){
   saveSettings();
 }
 function setState(s){
-  state = s;
-  $('status').textContent = s==="heating"? "Heating" : s==="paused"? "Paused" : "";
-  document.getElementById('card').classList.toggle('running', s!=="idle");
+  state=s;
+  if(s==="idle"){
+    $('startBtn').style.display='block';
+    $('progressWrap').style.display='none';
+  } else {
+    $('startBtn').style.display='none';
+    $('progressWrap').style.display='block';
+  }
+  $('status').textContent = s==="heating"? "Heating": s==="paused"? "Paused": "";
 }
 
-// heating
+// start heating
 function start(){
   updateControls();
-  const p = getParams(), total = predictTime(p);
+  const p=getParams(), total=predictTime(p);
   if(!isFinite(total)) return;
-  sim = {p, startTime: Date.now(), total};
-  finishTime = null;
-  setState("heating");
-  $('startBtn').style.display = 'none';
-  heatStep(); clearInterval(heatInt);
-  heatInt = setInterval(heatStep, 1000);
+  sim={p,startTime:Date.now(),total};
+  state="heating"; setState("heating");
+  clearAll();
+  heatStep(); heatInt=setInterval(heatStep,1000);
 }
+
+// heating tick
 function heatStep(){
-  const {p, startTime, total} = sim;
-  const elapsed = (Date.now()-startTime)/1000;
-  const rem = Math.max(0, total-elapsed);
-  const frac = Math.min((elapsed/total)*100, 100);
-  $('progressBar').style.width = frac+'%';
-  const T = p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
-  $('barLabel').textContent = T.toFixed(1)+"°";
-  $('info').textContent = fmtTime(rem)+" s";
-  $('status').textContent = "Heating";
+  const {p,startTime,total}=sim;
+  const elapsed=(Date.now()-startTime)/1000;
+  const rem=Math.max(0,total-elapsed);
+  const frac=Math.min((elapsed/total)*100,100);
+  $('progressBar').style.width=frac+'%';
+  const T=p.Ta + p.P0/p.hA - (p.P0/p.hA - (p.T0-p.Ta))*Math.exp(-p.hA*elapsed/p.MC);
+  $('barLabel').textContent=T.toFixed(1)+"°";
+  $('info').textContent=fmtTime(rem)+" s";
   if(rem<=0){
     clearInterval(heatInt);
-    setState("paused");
+    state="paused"; setState("paused");
     $('info').textContent="0 s";
     playChime(); beginFlash();
-    finishTime = Date.now();
-    clearInterval(coolInt);
-    coolInt = setInterval(coolStep,1000);
+    nullFinish=finishTime=Date.now();
+    coolInt=setInterval(coolStep,1000);
   }
 }
 
-// cooling
+// cooling tick
 function coolStep(){
-  const {p} = sim;
-  const elapsed = (Date.now()-finishTime)/1000;
-  const T = p.Ta + (p.Tt-p.Ta)*Math.exp(-p.hA*elapsed/p.MC);
-  const frac = Math.min(((T-p.Ta)/(p.Tt-p.Ta))*100, 100);
-  $('progressBar').style.width = frac+'%';
-  $('barLabel').textContent = T.toFixed(1)+"°";
-  $('status').textContent = "Paused";
+  const {p}=sim;
+  const elapsed=(Date.now()-finishTime)/1000;
+  const T=p.Ta+(p.Tt-p.Ta)*Math.exp(-p.hA*elapsed/p.MC);
+  const frac=Math.min(((T-p.Ta)/(p.Tt-p.Ta))*100,100);
+  $('progressBar').style.width=frac+'%';
+  $('barLabel').textContent=T.toFixed(1)+"°";
 }
 
-// toggle
+// toggle pause/resume
 $('progressWrap').addEventListener('click',()=>{
   if(state==="heating"){
     clearInterval(heatInt);
-    setState("paused");
-    finishTime = Date.now();
-    clearInterval(coolInt);
-    coolInt = setInterval(coolStep,1000);
+    state="paused"; setState("paused");
+    finishTime=Date.now(); clearInterval(coolInt); coolInt=setInterval(coolStep,1000);
   } else if(state==="paused"){
     clearInterval(coolInt);
-    const {p} = sim;
-    // calculate elapsed time by fraction
-    const label = parseFloat($('barLabel').textContent);
-    const tFrac = (label - p.Ta)/(p.Tt - p.Ta);
-    const elapsed = p.total * tFrac;
-    sim.startTime = Date.now() - elapsed*1000;
-    setState("heating");
-    heatStep(); clearInterval(heatInt);
-    heatInt = setInterval(heatStep,1000);
+    const {p,total} = sim;
+    const current= parseFloat($('barLabel').textContent);
+    const frac=(current-p.Ta)/(p.Tt-p.Ta);
+    const elapsed=total*frac;
+    sim.startTime=Date.now()-elapsed*1000;
+    state="heating"; setState("heating");
+    heatStep(); heatInt=setInterval(heatStep,1000);
   }
 });
 
 // chime & flash
 function playChime(){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type="sine"; o.frequency.value=1047; g.gain.value=0.3;
-  o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1);
+  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="sine";o.frequency.value=1047;g.gain.value=0.3;
+  o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);
 }
 function beginFlash(){
   let on=false; clearInterval(flashInt);
-  flashInt = setInterval(()=>{
-    on=!on; document.body.classList.toggle('flash-green', on);
-  }, 500);
+  flashInt=setInterval(()=>{on=!on;document.body.classList.toggle('flash-green',on);},500);
 }
 document.body.addEventListener('click',()=>{
   clearInterval(flashInt); clearInterval(coolInt);
   document.body.classList.remove('flash-green');
 });
 
-// bind
-$('startBtn').addEventListener('click', start);
-[startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
-  el.addEventListener('input', updateControls);
-  el.addEventListener('change', updateControls);
-});
+// clear all
+function clearAll(){
+  clearInterval(heatInt); clearInterval(coolInt); clearInterval(flashInt);
+}
 
+// bind
+$('startBtn').addEventListener('click',start);
+[startTemp,targetTemp,waterMass,mugMass,power0,heatLoss,roomTemp].forEach(el=>{
+  el.addEventListener('input',updateControls);
+  el.addEventListener('change',updateControls);
+});
 // init
 loadSettings(); updateControls();
 </script>
