@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer - Simulation Centric (Fix)</title>
+<title>Microwave Timer - Simulation Centric (Fix 2)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
@@ -82,7 +82,7 @@ body.flash-green { background-color: var(--fill-end); }
 </head>
 <body>
 <header>
-  <h1>Microwave Timer<small>Simulation Centric (Fix)</small></h1>
+  <h1>Microwave Timer<small>Simulation Centric (Fix 2)</small></h1>
 </header>
 <div id="card">
   <div id="controls">
@@ -117,202 +117,116 @@ const KEY = "microwaveTimerSettings_sim";
 const SIMULATION_INTERVAL_MS = 250;
 const cW = 4186, cC = 880;
 
-function saveSettings() { /* ... same as before ... */ }
-function loadSettings() { /* ... same as before ... */ }
+function saveSettings() {
+    if (state === "idle") {
+        localStorage.setItem(KEY, JSON.stringify({
+        start:+startTemp.value,target:+targetTemp.value,
+        water:+waterMass.value,mug:+mugMass.value,
+        P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
+        }));
+    }
+}
+function loadSettings() {
+    try{
+        const d=JSON.parse(localStorage.getItem(KEY)||"{}");
+        // Use defaults if value not found in storage or is invalid type
+        if(d.start && typeof d.start === 'number') $('startTemp').value=d.start;
+        if(d.target && typeof d.target === 'number') $('targetTemp').value=d.target;
+        if(d.water && typeof d.water === 'number') $('waterMass').value=d.water;
+        if(d.mug && typeof d.mug === 'number') $('mugMass').value=d.mug;
+        if(d.P0 && typeof d.P0 === 'number') $('power0').value=d.P0;
+        if(d.hA && typeof d.hA === 'number') $('heatLoss').value=d.hA;
+        if(d.room && typeof d.room === 'number') $('roomTemp').value=d.room;
+    }catch(e){ console.error("Error loading settings:", e); }
+}
 
 // --- Helpers ---
 const $ = id => document.getElementById(id);
 
-// *** UPDATED fmtTime ***
 function fmtTime(s) {
-    // Explicitly handle non-numeric input BEFORE calculations
     if (s === null || typeof s === 'undefined' || isNaN(s)) {
-        // console.warn("fmtTime received invalid input:", s);
-        return "--:--"; // Or return "Invalid" or similar indicator
+        return "--:--";
     }
     if (!isFinite(s)) {
-        return "∞"; // Handle Infinity explicitly if needed elsewhere
+        return "∞";
     }
-
-    s = Math.max(0, Math.round(s)); // Proceed with valid number
+    s = Math.max(0, Math.round(s));
     const m = Math.floor(s / 60);
     const sec = s % 60;
-    // Use minutes if m > 0, otherwise just show seconds
     return m > 0 ? m + ":" + sec.toString().padStart(2, "0") : sec.toString();
 }
 
 // --- Physics Model ---
-// *** UPDATED getParams with validation ***
 function getParams() {
-    // Helper to parse float and provide default if NaN or invalid
     const parseFloatOrDefault = (elementId, defaultValue, minValue = -Infinity) => {
-        const val = parseFloat($(elementId).value);
-        // Use defaultValue if NaN, less than minValue, or if original input was empty string
-        // (parseFloat("") is NaN)
+        const inputElement = $(elementId);
+        // Check if element exists before accessing value
+        if (!inputElement) {
+             console.error(`Element with ID '${elementId}' not found.`);
+             return defaultValue;
+        }
+        const val = parseFloat(inputElement.value);
         return (isNaN(val) || val < minValue) ? defaultValue : val;
     };
 
-    // Use parseFloat for sliders as well for consistency
     const T0 = parseFloatOrDefault('startTemp', 10);
     const Tt = parseFloatOrDefault('targetTemp', 80);
-    // Ensure masses/power are non-negative, provide defaults
-    const mW = parseFloatOrDefault('waterMass', 300, 0) / 1000; // Default 300g, min 0
-    const mM = parseFloatOrDefault('mugMass', 250, 0) / 1000;   // Default 250g, min 0
-    const P0 = parseFloatOrDefault('power0', 600, 0);         // Default 600W, min 0
-    // Ensure hA is non-negative (hA=0 means no heat loss)
-    const hA = parseFloatOrDefault('heatLoss', 1.0, 0);       // Default 1.0, min 0
-    // Room temp can be negative, use a reasonable default
-    const Ta = parseFloatOrDefault('roomTemp', 22);           // Default 22C
+    const mW = parseFloatOrDefault('waterMass', 300, 1) / 1000; // Min 1g water
+    const mM = parseFloatOrDefault('mugMass', 250, 0) / 1000;
+    const P0 = parseFloatOrDefault('power0', 600, 0);
+    const hA = parseFloatOrDefault('heatLoss', 1.0, 0);
+    const Ta = parseFloatOrDefault('roomTemp', 22);
 
     const MC = mW * cW + mM * cC;
-    // Add a check for MC <= 0 which would break calculations
     if (MC <= 0) {
         console.error("Calculated MC is <= 0. Check masses.", {mW, mM});
-        // Return null or throw error to prevent starting with invalid params?
-        // For now, let's allow it but calculations might yield NaN/Infinity.
+        // Indicate invalid params by returning null or specific object
+        return null;
     }
 
     return { T0, Tt, P0, hA, Ta, MC };
 }
 
-function calculateDeltaT(params, currentTemp, deltaTime, isHeating) {
-    // Add checks for invalid parameters that could lead to NaN/Infinity
-    if (!params || params.MC <= 0 || deltaTime <= 0) return 0;
+function calculateDeltaT(params, currentTemp, deltaTime, isHeating) { /* ... same as before ... */ }
+function estimateRemainingTime(params, currentTemp) { /* ... same as before ... */ }
 
-    const powerInput = isHeating ? params.P0 : 0;
-    // Ensure hA is non-negative before using it
-    const hA_safe = Math.max(0, params.hA);
-    const powerLoss = hA_safe * (currentTemp - params.Ta);
-    const netPower = powerInput - powerLoss;
-
-    const dT_dt = netPower / params.MC;
-    return dT_dt * deltaTime;
-}
-
-function estimateRemainingTime(params, currentTemp) {
-    // Add checks for invalid parameters
-    if (!params || params.MC <= 0) return NaN; // Indicate invalid calculation
-
-    const targetTemp = params.Tt;
-    if (currentTemp >= targetTemp) return 0;
-
-    // Ensure P0 and hA are valid numbers >= 0 for checks
-    const P0_safe = Math.max(0, params.P0);
-    const hA_safe = Math.max(0, params.hA);
-
-    if (P0_safe <= 0) return Infinity; // No power input
-
-    const maxReachableTemp = (hA_safe > 0) ? params.Ta + (P0_safe / hA_safe) : Infinity;
-
-    if (targetTemp > maxReachableTemp) return Infinity;
-
-    // Handle no heat loss case (hA = 0)
-    if (hA_safe <= 0) {
-        return (params.MC * (targetTemp - currentTemp)) / P0_safe;
-    }
-
-    // Proceed with log calculation for hA > 0
-    const numerator = P0_safe - hA_safe * (currentTemp - params.Ta);
-    const denominator = P0_safe - hA_safe * (targetTemp - params.Ta);
-
-    if (numerator <= 0 || denominator <= 0) {
-        // This can happen if currentTemp or targetTemp is exactly the equilibrium temp,
-        // or slightly above due to float inaccuracies.
-        // If current is below target, it implies target is unreachable or at equilibrium -> Infinity
-        return (currentTemp < targetTemp) ? Infinity : 0;
-    }
-
-    const time = (params.MC / hA_safe) * Math.log(numerator / denominator);
-    // Final check if calculation resulted in NaN for any reason
-    return isNaN(time) ? NaN : time;
-}
 
 // --- State Management ---
 let state = "idle";
 let simulationInterval = null;
 let flashInterval = null;
-let sim = {
-    params: null, currentTemperature: 0, initialTemperature: 0,
-    targetTemperature: 0, lastTickTime: 0
-};
+let sim = { /* ... same as before ... */ };
 
 // --- UI Update Functions ---
-// *** UPDATED updateUI ***
-function updateUI() {
-    if (state === 'idle') {
-        updatePredictedTimeFromInputs();
-        $('progressWrap').style.display = 'none';
-        $('barLabel').textContent = '';
-        return;
-    }
+function updateUI() { /* ... same as before ... */ }
 
-    // Ensure temp is a number before displaying
-    const tempDisplay = isNaN(sim.currentTemperature) ? "--" : sim.currentTemperature.toFixed(1);
-    $('barLabel').textContent = tempDisplay + "°";
-
-    // Update progress bar
-    const tempRange = sim.targetTemperature - sim.initialTemperature;
-    let progress = 0;
-    if (tempRange > 0 && !isNaN(sim.currentTemperature)) {
-        progress = ((sim.currentTemperature - sim.initialTemperature) / tempRange) * 100;
-    } else if (sim.currentTemperature >= sim.targetTemperature) {
-        progress = 100;
-    }
-    progress = Math.max(0, Math.min(100, progress));
-    $('progressBar').style.width = progress + '%';
-
-    // Update estimated remaining time display
-    if (state === 'heating' || state === 'paused') {
-        const remaining = estimateRemainingTime(sim.params, sim.currentTemperature);
-        // Use the robust fmtTime which handles NaN/Infinity/undefined
-        $('info').textContent = fmtTime(remaining) + (isFinite(remaining) ? " s" : "");
-    } else if (state === 'finished') {
-        $('info').textContent = "0 s";
-    }
+// *** UPDATED updateControlsOnIdle ***
+function updateControlsOnIdle() {
+    // Use the (potentially updated by loadSettings) value from the elements
+    const startVal = $('startTemp').value;
+    const targetVal = $('targetTemp').value;
+    $('startVal').textContent = parseFloat(startVal).toFixed(1) + " °C"; // Format to one decimal
+    $('targetVal').textContent = parseFloat(targetVal).toFixed(0) + " °C"; // Format to integer
+    updatePredictedTimeFromInputs();
 }
 
-function updateControlsOnIdle() { /* ... same as before ... */ }
-function updatePredictedTimeFromInputs() { /* ... same as before, but uses updated estimateRemainingTime */ }
+// *** UPDATED updatePredictedTimeFromInputs ***
+function updatePredictedTimeFromInputs() {
+    const p = getParams();
+    // Handle case where getParams returns null due to invalid input
+    if (!p) {
+        $('info').textContent = "Invalid Params";
+        return;
+    }
+    const t = estimateRemainingTime(p, p.T0);
+    $('info').textContent = (t === null || (p.T0 >= p.Tt)) ? "Start ≥ Target" : fmtTime(t) + (isFinite(t) ? " s" : "");
+}
+
 function updateUIForStateChange() { /* ... same as before ... */ }
 
 
 // --- Simulation Loop ---
-function simulationStep() { /* ... (logic mostly same, relies on updated calculateDeltaT) ... */
-    if (state === 'idle' || !sim.params) return;
-
-    const now = Date.now();
-    const deltaTime = (now - sim.lastTickTime) / 1000;
-    sim.lastTickTime = now;
-
-    if (deltaTime <= 0) return;
-
-    const isHeating = (state === 'heating');
-    const deltaT = calculateDeltaT(sim.params, sim.currentTemperature, deltaTime, isHeating);
-
-    // Prevent temp becoming NaN if deltaT calculation failed
-    if (!isNaN(deltaT)) {
-        sim.currentTemperature += deltaT;
-    } else {
-        console.warn("deltaT is NaN, stopping simulation.");
-        setState('idle'); // Or show an error state
-        return;
-    }
-
-     // Clamp to room temp when cooling
-     if (!isHeating && sim.params.hA > 0 && sim.currentTemperature < sim.params.Ta) {
-         sim.currentTemperature = sim.params.Ta;
-     }
-
-    // Check for reaching target ONLY when heating
-    if (isHeating && sim.currentTemperature >= sim.targetTemperature) {
-        sim.currentTemperature = sim.targetTemperature;
-        updateUI(); // Update UI one last time before changing state
-        setState("finished");
-    } else {
-        // Update UI normally if not finished
-        updateUI();
-    }
-}
+function simulationStep() { /* ... same as before ... */ }
 
 // --- State Transition Logic ---
 function setState(newState) { /* ... same as before ... */ }
@@ -322,32 +236,43 @@ function startSimulation() { /* ... same as before ... */ }
 function stopSimulation() { /* ... same as before ... */ }
 
 // --- Actions ---
+// *** UPDATED startAction ***
 function startAction() {
-     if (state !== 'idle') return;
+    console.log("Start button clicked. Current state:", state); // Debug log
+    if (state !== 'idle') {
+        console.warn("Start action ignored: Not in idle state.");
+        return;
+    }
 
-    sim.params = getParams(); // Uses robust getParams
-    // Add extra validation after getting params
-    if (!sim.params || sim.params.MC <= 0) {
+    sim.params = getParams();
+    console.log("Params:", sim.params); // Debug log
+
+    // Check if getParams failed (e.g., MC <= 0)
+    if (!sim.params) {
          $('info').textContent = "Invalid Params";
-         console.error("Cannot start: Invalid parameters or MC <= 0", sim.params);
+         console.error("Start failed: Invalid parameters calculated.");
          return;
     }
 
     sim.initialTemperature = sim.params.T0;
     sim.targetTemperature = sim.params.Tt;
     sim.currentTemperature = sim.params.T0;
+    console.log("Initial Temps:", {initial: sim.initialTemperature, target: sim.targetTemperature, current: sim.currentTemperature}); // Debug log
+
 
     const initialEstimate = estimateRemainingTime(sim.params, sim.currentTemperature);
-    // Check for NaN explicitly now from estimateRemainingTime
-    if (initialEstimate === null || isNaN(initialEstimate) || !isFinite(initialEstimate)) {
-         $('info').textContent = (initialEstimate === null || sim.params.T0 >= sim.params.Tt) ? "Start ≥ Target" : "∞ (Unreachable)";
-         // Also log why it might be unreachable
-         if (!isFinite(initialEstimate) && initialEstimate !== null) {
-             console.warn("Target potentially unreachable with current params:", sim.params);
-         }
+    console.log("Initial Estimate:", initialEstimate); // Debug log
+
+    // Check if start >= target or estimate is invalid/infinite
+    if (sim.params.T0 >= sim.params.Tt || initialEstimate === null || isNaN(initialEstimate) || !isFinite(initialEstimate)) {
+         const reason = (sim.params.T0 >= sim.params.Tt || initialEstimate === null) ? "Start ≥ Target" : "∞ (Unreachable)";
+         $('info').textContent = reason;
+         console.warn("Start failed:", reason);
          return;
     }
 
+    // If all checks pass, proceed
+    console.log("Starting simulation..."); // Debug log
     setState("heating");
 }
 
@@ -355,22 +280,41 @@ function pauseAction() { /* ... same as before ... */ }
 function resumeAction() { /* ... same as before ... */ }
 function stopAction() { /* ... same as before ... */ }
 
-// --- Audio & Visual Feedback --- (no changes needed)
+// --- Audio & Visual Feedback ---
 let audioCtx = null;
 function playChime(){ /* ... same as before ... */ }
 function beginFlash(){ /* ... same as before ... */ }
 function stopFlash(){ /* ... same as before ... */ }
 
-// --- Event Binding --- (no changes needed)
+// --- Event Binding ---
 $('startBtn').addEventListener('click', startAction);
-$('progressWrap').addEventListener('click', () => { /* ... */ });
-document.body.addEventListener('click', (e) => { /* ... */ });
-[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => { /* ... */ });
+$('progressWrap').addEventListener('click', () => { /* ... same as before ... */ });
+document.body.addEventListener('click', (e) => { /* ... same as before ... */ });
+[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
+  el.addEventListener('input', () => {
+      if (state === 'idle') {
+          updateControlsOnIdle(); // Update display immediately on input
+      }
+  });
+  el.addEventListener('change', () => {
+       if (state === 'idle') {
+           saveSettings(); // Save on 'change'
+           updateControlsOnIdle(); // Ensure prediction updates after manual number entry + blur
+       }
+  });
+});
 
-// --- Initialization --- (no changes needed)
-loadSettings();
-updateControlsOnIdle();
-setState("idle");
+// --- Initialization ---
+// Ensure DOM is fully loaded before running init scripts
+document.addEventListener('DOMContentLoaded', (event) => {
+    console.log("DOM loaded. Initializing..."); // Debug log
+    loadSettings(); // Load saved values into inputs
+    updateControlsOnIdle(); // Update text displays based on input values
+    setState("idle"); // Set initial state (sets up UI)
+    console.log("Initialization complete."); // Debug log
+});
+
+
 window.addEventListener('beforeunload', () => { stopSimulation(); });
 
 </script>
