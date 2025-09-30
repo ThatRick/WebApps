@@ -1,0 +1,36 @@
+{
+  "name": "poyta",
+  "description": "Yksinkertainen suorakulmainen pöytä, jossa on neljä jalkaa ja kansi.",
+  "boxes": [
+    {
+      "label": "kansi",
+      "position": [0, 0.42, 0],
+      "size": [1.4, 0.04, 0.8],
+      "color": "#c89f73"
+    },
+    {
+      "label": "jalka-etuoikea",
+      "position": [0.62, 0.21, 0.34],
+      "size": [0.08, 0.42, 0.08],
+      "color": "#8d6742"
+    },
+    {
+      "label": "jalka-etuvasen",
+      "position": [-0.62, 0.21, 0.34],
+      "size": [0.08, 0.42, 0.08],
+      "color": "#8d6742"
+    },
+    {
+      "label": "jalka-takaoikea",
+      "position": [0.62, 0.21, -0.34],
+      "size": [0.08, 0.42, 0.08],
+      "color": "#8d6742"
+    },
+    {
+      "label": "jalka-takav\u00e4\u00e4n",
+      "position": [-0.62, 0.21, -0.34],
+      "size": [0.08, 0.42, 0.08],
+      "color": "#8d6742"
+    }
+  ]
+}
