@@ -2,732 +2,204 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Microwave Timer - Simulation Centric (vFinal)</title>
+<title>Microwave Timer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
-  --bg: #0d0d0d; --card: #161616; --text: #e8e8e8; --muted: #7a7a7a;
-  --track: #1f1f1f; --fill-start: #005f99; --fill-end: #008644; /* Green for flash */
-  --radius: 14px; --space: clamp(0.9rem,3vw,1.4rem);
-  --mono: 'SFMono-Regular','Consolas','Liberation Mono',monospace;
-  --debug-bg: #222; --debug-text: #ccc; --debug-error: #ff8a8a; --debug-warn: #ffd58a;
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  --bg: #101014;
+  --panel: #1b1b20;
+  --accent: #39f18d;
+  --muted: #7f8696;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg); color: var(--text);
-  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding: var(--space); display: flex; flex-direction: column; min-height: 100vh;
-  transition: background-color 0.2s ease-in-out; /* Default transition */
-}
-header { text-align: center; margin-bottom: clamp(1.2rem,4vw,2rem); }
-h1 { font-size: clamp(1.6rem,4vw,2rem); font-weight: 600; }
-h1 small { display: block; font-size: .78em; color: var(--muted); }
-#card {
-  background: var(--card); padding: var(--space); border-radius: var(--radius);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35); flex: 1; display: flex; flex-direction: column;
-}
-#controls { display: block; }
-.field { margin-top: var(--space); }
-label { display: block; margin-bottom: .25rem; font-size: 1.05rem; color: var(--muted); }
-input[type=range] {
-  width: 100%; height: 6px; background: #444; border-radius: 4px; outline: none;
-  appearance: none; margin: .35rem 0;
-}
-input[type=range]:disabled { opacity: 0.5; }
-input[type=range]::-webkit-slider-thumb {
-  appearance: none; width: 22px; height: 22px; border-radius: 50%;
-  background: var(--fill-end); border: none; cursor: pointer;
-}
-input[type=range]:disabled::-webkit-slider-thumb { cursor: not-allowed; background: #555; }
-.value-display { margin-left: .4rem; font-size: 1.6rem; font-weight: 600; color: var(--text); }
-details { margin-top: var(--space); border-top: 1px dashed #333; padding-top: var(--space); }
-summary { cursor: pointer; color: var(--fill-end); font-weight: 500; }
-details[open] summary { margin-bottom: calc(var(--space) / 2); } /* Add space when open */
-details label { margin-top: calc(var(--space) / 2); } /* Add space between advanced inputs */
-details label:first-of-type { margin-top: 0; } /* No top margin for first advanced input */
-
-input[type=number] {
-  width: 100%; padding: .6rem .8rem; margin-top: .25rem; font-size: 1rem;
-  border: 1px solid #333; border-radius: var(--radius); background: #000; color: var(--text);
-}
-input[type=number]:disabled { background: #111; color: #777; cursor: not-allowed; }
-#startBtn {
-  width: 100%; height: 54px; margin-top: var(--space); border-radius: var(--radius);
-  background: linear-gradient(90deg, var(--fill-start), var(--fill-end));
-  border: none; color: #000; font-size: 1.25rem; font-weight: 600; cursor: pointer;
-}
-#progressWrap {
-  width: 100%; height: 54px; margin-top: var(--space); border-radius: var(--radius);
-  background: var(--track); overflow: hidden; position: relative; display: none; cursor: pointer;
-}
-#progressBar {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--fill-start), var(--fill-end));
-  transition: width 0.2s linear;
-}
-#barLabel {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  font-family: var(--mono); font-size: 1.4rem; color: #fff;
-  text-shadow: 0 0 4px rgba(0,0,0,0.6); pointer-events: none;
-}
-#status {
-  margin-top: var(--space); text-align: center; font-family: var(--mono);
-  font-size: 1rem; color: var(--muted); min-height: 1.2em;
-}
-#info { /* Now displays estimated remaining time */
-  margin-top: var(--space); text-align: center; font-family: var(--mono);
-  font-size: 2.4rem; min-height: 1.2em;
-}
-footer {
-  margin-top: var(--space); text-align: center; font-size: 0.85rem;
-  color: var(--muted); font-style: italic; cursor: pointer; /* Add cursor pointer */
-}
-body.flash-green {
-   background-color: var(--fill-end); /* No !important needed now */
-   /* Transition is handled by the body default */
-}
-
-/* --- Debug Styles --- */
-#debugContainer {
-  margin-top: var(--space);
-  border: 1px solid #444;
-  border-radius: calc(var(--radius) / 2);
-  background-color: var(--debug-bg);
-  padding: calc(var(--space) / 2);
-}
-#debugHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: calc(var(--space) / 3);
-}
-#debugHeader span {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-#clearDebug, #toggleDebug {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-  background-color: #333;
-  color: var(--text);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-#toggleDebug { /* Positioned after footer */
-    display: block;
-    margin: calc(var(--space) / 2) auto 0 auto; /* Center it below footer */
-}
-#debugOutput {
-  max-height: 150px; /* Limit height */
-  overflow-y: auto; /* Enable scroll */
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--debug-text);
-  line-height: 1.4;
-}
-#debugOutput > div { /* Style individual log messages */
-  padding: 2px 4px;
-  border-bottom: 1px dotted #383838;
-  white-space: pre-wrap; /* Wrap long lines */
-  word-break: break-all; /* Break long words/strings */
-}
-#debugOutput > div:last-child {
-  border-bottom: none;
-}
-.debug-log { color: var(--debug-text); }
-.debug-warn { color: var(--debug-warn); font-weight: bold; }
-.debug-error { color: var(--debug-error); font-weight: bold; }
-
+body { min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: #f0f0f5; }
+main { width: min(380px, 92vw); background: var(--panel); padding: 1.8rem; border-radius: 18px; display: grid; gap: 1.1rem; box-shadow: 0 18px 40px rgba(0,0,0,0.4); }
+h1 { font-size: 1.35rem; font-weight: 600; text-align: center; letter-spacing: 0.04em; }
+label { display: grid; gap: .35rem; font-size: .95rem; color: var(--muted); }
+input { accent-color: var(--accent); }
+input[type=range] { width: 100%; }
+input[type=number] { width: 100%; padding: .55rem .7rem; border-radius: 10px; border: 1px solid #2d303d; background: #101119; color: inherit; }
+small { color: inherit; font-weight: 600; font-size: 1.2rem; }
+button { border: none; border-radius: 12px; padding: .75rem; font-size: 1.05rem; font-weight: 600; cursor: pointer; background: linear-gradient(120deg, #2ecfff, var(--accent)); color: #06241a; transition: transform .2s; }
+button:active { transform: scale(.98); }
+#progress { height: 54px; border-radius: 12px; overflow: hidden; display: none; background: #11131c; position: relative; cursor: pointer; }
+#progress > div { position: absolute; inset: 0; background: linear-gradient(120deg, #2ecfff, var(--accent)); transform-origin: left; transform: scaleX(0); transition: transform .15s linear; }
+#progress span { position: absolute; inset: 0; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+#info { text-align: center; font-family: "SFMono-Regular", ui-monospace, Menlo, monospace; font-size: 1.1rem; min-height: 1.1em; }
+#status { text-align: center; color: var(--muted); min-height: 1em; }
+details { border-top: 1px solid #252837; padding-top: .8rem; }
+summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+body.flash { animation: flash .6s alternate infinite; }
+@keyframes flash { from { background: var(--bg); } to { background: #063; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Microwave Timer<small>Simulation Centric (vFinal)</small></h1>
-</header>
-<div id="card">
-  <div id="controls">
-     <!-- Inputs -->
-     <div class="field">
-      <label>Start <span id="startVal" class="value-display">? °C</span></label>
-      <input id="startTemp" type="range" min="5" max="20" step="0.1" value="13">
-    </div>
-    <div class="field">
-      <label>Target <span id="targetVal" class="value-display">? °C</span></label>
-      <input id="targetTemp" type="range" min="75" max="90" step="1" value="80">
-    </div>
-    <details id="advancedDetails"> <!-- Give details an ID -->
-      <summary>Advanced</summary>
-      <label>Water mass (g)<input id="waterMass" type="number" placeholder="e.g., 300" value="303" step="1" min="1"></label>
-      <label>Mug mass (g)<input id="mugMass" type="number" placeholder="e.g., 250" value="250" step="1" min="0"></label>
-      <label>P₀ (W)<input id="power0" type="number" placeholder="e.g., 600" value="600" step="10" min="0"></label>
-      <label>hA (W / °C)<input id="heatLoss" type="number" placeholder="e.g., 1.1" value="1.1" step="0.1" min="0"></label>
-      <label>Room T (°C)<input id="roomTemp" type="number" placeholder="e.g., 22" value="22" step="0.1"></label>
-    </details>
-  </div>
-  <button id="startBtn" type="button">START</button>
-  <div id="progressWrap"><div id="progressBar"></div><span id="barLabel"></span></div>
-  <div id="status"></div>
+<main>
+  <h1>Microwave Timer</h1>
+  <label>Start temperature <small id="startDisplay"></small>
+    <input id="start" type="range" min="5" max="25" step="0.1" value="13">
+  </label>
+  <label>Target temperature <small id="targetDisplay"></small>
+    <input id="target" type="range" min="60" max="95" step="0.5" value="80">
+  </label>
+  <details>
+    <summary>Advanced</summary>
+    <label>Water mass (g)
+      <input id="water" type="number" value="300" min="1" step="1">
+    </label>
+    <label>Mug mass (g)
+      <input id="mug" type="number" value="250" min="0" step="1">
+    </label>
+    <label>Microwave power (W)
+      <input id="power" type="number" value="600" min="0" step="10">
+    </label>
+    <label>Heat loss hA (W/°C)
+      <input id="loss" type="number" value="1" min="0" step="0.1">
+    </label>
+    <label>Room temperature (°C)
+      <input id="ambient" type="number" value="22" step="0.1">
+    </label>
+  </details>
+  <button id="startBtn" type="button">Start heating</button>
+  <div id="progress"><div></div><span id="tempLabel"></span></div>
   <div id="info"></div>
-</div>
-<footer id="pageFooter">Tap <i>here</i> to stop simulation & flashing</footer> <!-- Give footer an ID -->
-
-<!-- Debug Output Area -->
-<div id="debugContainer" style="display: none;">
-    <div id="debugHeader">
-        <span>Debug Log</span>
-        <button id="clearDebug">Clear</button>
-    </div>
-    <div id="debugOutput"></div>
-</div>
-<button id="toggleDebug">Show Debug Log</button>
-
+  <div id="status"></div>
+</main>
 <script>
-// --- Debug Output ---
-const debugOutput = document.getElementById('debugOutput');
-const debugContainer = document.getElementById('debugContainer');
-const toggleDebugBtn = document.getElementById('toggleDebug');
-const clearDebugBtn = document.getElementById('clearDebug');
-let isDebugVisible = false;
-
-function logToPage(message, type = 'log') {
-    if (!debugOutput) return;
-    const entry = document.createElement('div');
-    entry.classList.add(`debug-${type}`);
-    const time = new Date().toLocaleTimeString([], { hour12: false });
-    entry.textContent = `[${time}] ${message}`;
-    debugOutput.appendChild(entry);
-    // Auto-scroll to bottom
-    debugOutput.scrollTop = debugOutput.scrollHeight;
-}
-
-// Store original console methods
-const originalConsole = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-};
-
-// Override console methods
-console.log = function(...args) {
-    originalConsole.log.apply(console, args); // Keep original behavior
-    const message = args.map(arg => (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)).join(' ');
-    logToPage(message, 'log');
-};
-console.warn = function(...args) {
-    originalConsole.warn.apply(console, args);
-    const message = args.map(arg => (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)).join(' ');
-    logToPage(message, 'warn');
-};
-console.error = function(...args) {
-    originalConsole.error.apply(console, args);
-    const message = args.map(arg => (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)).join(' ');
-    logToPage(message, 'error');
-};
-
-// Debug toggle/clear functionality
-toggleDebugBtn.addEventListener('click', () => {
-    isDebugVisible = !isDebugVisible;
-    debugContainer.style.display = isDebugVisible ? 'block' : 'none';
-    toggleDebugBtn.textContent = isDebugVisible ? 'Hide Debug Log' : 'Show Debug Log';
-});
-clearDebugBtn.addEventListener('click', () => {
-    if(debugOutput) debugOutput.innerHTML = '';
-});
-
-console.log("Debug logger initialized.");
-
-// --- Constants & Persistence ---
-const KEY = "microwaveTimerSettings_sim";
-const SIMULATION_INTERVAL_MS = 250;
-const cW = 4186, cC = 880;
-
-function saveSettings() {
-    if (state === "idle") {
-        localStorage.setItem(KEY, JSON.stringify({
-        start:+startTemp.value,target:+targetTemp.value,
-        water:+waterMass.value,mug:+mugMass.value,
-        P0:+power0.value,hA:+heatLoss.value,room:+roomTemp.value
-        }));
-        console.log("Settings saved:", JSON.parse(localStorage.getItem(KEY)));
-    }
-}
-function loadSettings() {
-    try{
-        const d=JSON.parse(localStorage.getItem(KEY)||"{}");
-        console.log("Attempting to load settings:", d);
-        if(d.start && typeof d.start === 'number') $('startTemp').value=d.start;
-        if(d.target && typeof d.target === 'number') $('targetTemp').value=d.target;
-        if(d.water && typeof d.water === 'number') $('waterMass').value=d.water;
-        if(d.mug && typeof d.mug === 'number') $('mugMass').value=d.mug;
-        if(d.P0 && typeof d.P0 === 'number') $('power0').value=d.P0;
-        if(d.hA && typeof d.hA === 'number') $('heatLoss').value=d.hA;
-        if(d.room && typeof d.room === 'number') $('roomTemp').value=d.room;
-        console.log("Settings loaded successfully.");
-    }catch(e){ console.error("Error loading settings:", e); }
-}
-
-// --- Helpers ---
 const $ = id => document.getElementById(id);
-
-function fmtTime(s) {
-    if (s === null || typeof s === 'undefined' || isNaN(s)) { return "--:--"; }
-    if (!isFinite(s)) { return "∞"; }
-    s = Math.max(0, Math.round(s));
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return m > 0 ? m + ":" + sec.toString().padStart(2, "0") : sec.toString();
-}
-
-// --- Physics Model ---
-function getParams() {
-    console.log("Getting parameters...");
-    const parseFloatOrDefault = (elementId, defaultValue, minValue = -Infinity) => {
-        const inputElement = $(elementId);
-        if (!inputElement) { console.error(`Element with ID '${elementId}' not found.`); return defaultValue; }
-        const val = parseFloat(inputElement.value);
-        if (isNaN(val) || inputElement.value.trim() === "") {
-             console.warn(`Using default value for ${elementId} (value: "${inputElement.value}")`);
-             return defaultValue;
-        }
-        if (val < minValue) {
-             console.warn(`Value for ${elementId} (${val}) is below minimum (${minValue}), using minimum.`);
-             return minValue;
-        }
-        return val;
-    };
-    const T0 = parseFloatOrDefault('startTemp', 10);
-    const Tt = parseFloatOrDefault('targetTemp', 80);
-    const mW = parseFloatOrDefault('waterMass', 300, 1) / 1000;
-    const mM = parseFloatOrDefault('mugMass', 250, 0) / 1000;
-    const P0 = parseFloatOrDefault('power0', 600, 0);
-    const hA = parseFloatOrDefault('heatLoss', 1.0, 0);
-    const Ta = parseFloatOrDefault('roomTemp', 22);
-    const MC = mW * cW + mM * cC;
-    if (MC <= 0) { console.error("Calculated MC is <= 0.", {mW, mM, cW, cC}); return null; }
-    const params = { T0, Tt, P0, hA, Ta, MC };
-    console.log("Parameters retrieved:", params);
-    return params;
-}
-
-function calculateDeltaT(params, currentTemp, deltaTime, isHeating) {
-    if (!params || params.MC <= 0 || deltaTime <= 0) return 0;
-    const powerInput = isHeating ? params.P0 : 0;
-    const hA_safe = Math.max(0, params.hA);
-    const powerLoss = hA_safe * (currentTemp - params.Ta);
-    const netPower = powerInput - powerLoss;
-    const dT_dt = netPower / params.MC;
-    const deltaT = dT_dt * deltaTime;
-    return deltaT;
-}
-
-function estimateRemainingTime(params, currentTemp) {
-    if (!params || params.MC <= 0) { return NaN; }
-    const targetTemp = params.Tt;
-    if (currentTemp >= targetTemp) { return 0; }
-    const P0_safe = Math.max(0, params.P0);
-    const hA_safe = Math.max(0, params.hA);
-    if (P0_safe <= 0 && currentTemp < targetTemp) { return Infinity; }
-
-    const maxReachableTemp = (hA_safe > 0) ? params.Ta + (P0_safe / hA_safe) : Infinity;
-    if (targetTemp > maxReachableTemp) {
-        console.warn(`Target (${targetTemp}°C) is unreachable. Max possible ≈ ${maxReachableTemp.toFixed(1)}°C`);
-        return Infinity;
-    }
-    if (hA_safe <= 0) {
-        if (P0_safe <= 0) return Infinity;
-        return (params.MC * (targetTemp - currentTemp)) / P0_safe;
-    }
-    const numerator = P0_safe - hA_safe * (currentTemp - params.Ta);
-    const denominator = P0_safe - hA_safe * (targetTemp - params.Ta);
-    if (numerator <= 0 && currentTemp < targetTemp) {
-        console.warn("Cannot reach target from current temp (numerator <= 0). Current heat loss >= P0.");
-        return Infinity;
-    }
-     if (denominator <= 0) {
-        console.warn("Denominator issue in time estimation (target likely unreachable).");
-        return Infinity;
-    }
-    const time = (params.MC / hA_safe) * Math.log(numerator / denominator);
-    return isNaN(time) ? NaN : Math.max(0, time);
-}
-
-// --- State Management ---
-let state = "idle";
-let simulationInterval = null;
-let flashInterval = null;
-let sim = {
-    params: null, currentTemperature: 0, initialTemperature: 0,
-    targetTemperature: 0, lastTickTime: 0
+const displays = { start: $('startDisplay'), target: $('targetDisplay') };
+const inputs = {
+  start: $('start'),
+  target: $('target'),
+  water: $('water'),
+  mug: $('mug'),
+  power: $('power'),
+  loss: $('loss'),
+  ambient: $('ambient')
 };
-const detailsElement = $('advancedDetails'); // Get reference to details element
+const progress = $('progress');
+const progressFill = progress.firstElementChild;
+const tempLabel = $('tempLabel');
+const info = $('info');
+const status = $('status');
+const button = $('startBtn');
+const heatCapacity = { water: 4186, ceramic: 880 };
+let raf = null;
+let sim = null;
 
-// --- UI Update Functions ---
-function updateUI() {
-    if (state === 'idle') {
-        updatePredictedTimeFromInputs();
-        $('progressWrap').style.display = 'none';
-        $('barLabel').textContent = '';
-        return;
-    }
-    const tempDisplay = isNaN(sim.currentTemperature) ? "--" : sim.currentTemperature.toFixed(1);
-    $('barLabel').textContent = tempDisplay + "°";
-    const tempRange = sim.targetTemperature - sim.initialTemperature;
-    let progress = 0;
-    if (tempRange > 0 && !isNaN(sim.currentTemperature)) {
-        progress = ((sim.currentTemperature - sim.initialTemperature) / tempRange) * 100;
-    } else if (!isNaN(sim.currentTemperature) && sim.currentTemperature >= sim.targetTemperature) {
-        progress = 100;
-    }
-    progress = Math.max(0, Math.min(100, progress));
-    $('progressBar').style.width = progress + '%';
-    if (state === 'heating' || state === 'paused') {
-        const remaining = estimateRemainingTime(sim.params, sim.currentTemperature);
-        $('info').textContent = fmtTime(remaining) + (isFinite(remaining) ? " s" : "");
-    } else if (state === 'finished') {
-        $('info').textContent = "0 s";
-    }
+function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+function displayRanges() {
+  displays.start.textContent = Number(inputs.start.value).toFixed(1) + ' °C';
+  displays.target.textContent = Number(inputs.target.value).toFixed(1) + ' °C';
 }
-
-function updateControlsOnIdle() {
-    const startVal = $('startTemp').value;
-    const targetVal = $('targetTemp').value;
-    $('startVal').textContent = parseFloat(startVal).toFixed(1) + " °C";
-    $('targetVal').textContent = parseFloat(targetVal).toFixed(0) + " °C";
-    updatePredictedTimeFromInputs();
+function read(id, fallback = 0) {
+  const value = Number.parseFloat(inputs[id].value);
+  return Number.isFinite(value) ? value : fallback;
 }
-
-function updatePredictedTimeFromInputs() {
-    const p = getParams();
-    if (!p) { $('info').textContent = "Invalid Params"; return; }
-    const t = estimateRemainingTime(p, p.T0);
-    let displayTime;
-    if (p.T0 >= p.Tt) {
-         displayTime = "Start ≥ Target";
-    } else if (t === null || isNaN(t)) {
-        displayTime = "Invalid Calc";
-    } else if (!isFinite(t)) {
-        displayTime = "∞ (Unreachable)";
-    } else {
-        displayTime = fmtTime(t) + " s";
-    }
-    $('info').textContent = displayTime;
-     console.log(`Predicted time from inputs: ${displayTime}`);
+function estimate(p, current) {
+  if (current >= p.target) return 0;
+  const P = Math.max(0, p.power);
+  const hA = Math.max(0, p.loss);
+  if (!P) return Infinity;
+  if (!hA) return (p.capacity * (p.target - current)) / P;
+  const numerator = P - hA * (current - p.ambient);
+  const denominator = P - hA * (p.target - p.ambient);
+  if (numerator <= 0 || denominator <= 0) return Infinity;
+  return (p.capacity / hA) * Math.log(numerator / denominator);
 }
-
-function updateUIForStateChange() {
-    console.log(`Updating UI for state change to: ${state}`);
-    const isIdle = state === "idle";
-    const isRunning = !isIdle;
-    $('startBtn').style.display = isIdle ? 'block' : 'none';
-    $('progressWrap').style.display = isRunning ? 'block' : 'none';
-
-    // Disable all controls within #controls div when running
-    $('controls').querySelectorAll('input, summary').forEach(el => {
-        el.disabled = isRunning;
-        // Make summary non-interactive when disabled
-        if (el.tagName === 'SUMMARY') {
-           el.style.pointerEvents = isRunning ? 'none' : '';
-           el.style.opacity = isRunning ? 0.6 : 1;
-        }
-    });
-
-    // Close details when running, re-open when stopping/idle
-    if (detailsElement) {
-        detailsElement.open = !isRunning;
-    }
-
-    switch (state) {
-        case "idle": $('status').textContent = ""; break;
-        case "heating": $('status').textContent = "Heating"; break;
-        case "paused": $('status').textContent = "Paused"; break;
-        case "finished": $('status').textContent = "Finished!"; break;
-    }
-    if (state !== "finished") { stopFlash(); }
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) return '∞';
+  const s = Math.max(0, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  const rest = String(s % 60).padStart(2, '0');
+  return m ? `${m}:${rest}` : String(s % 60);
 }
-
-// --- Simulation Loop ---
-function simulationStep() {
-    if (state === 'idle' || !sim.params) return;
-
-    const now = Date.now();
-    let deltaTime = (now - sim.lastTickTime) / 1000;
-    sim.lastTickTime = now;
-
-    if (deltaTime <= 0) return;
-    deltaTime = Math.min(deltaTime, 0.5); // Cap delta time
-
-    const isHeating = (state === 'heating');
-    const deltaT = calculateDeltaT(sim.params, sim.currentTemperature, deltaTime, isHeating);
-
-    let nextTemperature = sim.currentTemperature;
-
-    if (!isNaN(deltaT)) {
-        nextTemperature += deltaT;
-    } else {
-        console.error("deltaT is NaN, stopping simulation.");
-        setState('idle');
-        return;
-    }
-
-    // Clamping Logic
-    if (!isHeating && sim.params.hA > 0 && nextTemperature < sim.params.Ta && sim.currentTemperature >= sim.params.Ta) {
-        sim.currentTemperature = sim.params.Ta;
-    } else {
-        sim.currentTemperature = nextTemperature;
-    }
-
-    // Check for finish condition
-    if (isHeating && sim.currentTemperature >= sim.targetTemperature) {
-        console.log(`Target reached! Current: ${sim.currentTemperature.toFixed(2)}, Target: ${sim.targetTemperature}`);
-        sim.currentTemperature = sim.targetTemperature; // Clamp exactly to target
-        updateUI();
-        setState("finished");
-    } else {
-        updateUI();
-    }
+function gatherParams() {
+  const start = read('start');
+  const target = read('target');
+  const water = clamp(read('water', 300) / 1000, 0, 10);
+  const mug = clamp(read('mug', 0) / 1000, 0, 10);
+  const power = clamp(read('power', 600), 0, 2000);
+  const loss = clamp(read('loss', 1), 0, 100);
+  const ambient = read('ambient', 22);
+  const capacity = water * heatCapacity.water + mug * heatCapacity.ceramic;
+  return capacity > 0 ? { start, target, power, loss, ambient, capacity } : null;
 }
-
-// --- State Transition Logic ---
-function setState(newState) {
-    if (state === newState) {
-         console.log(`setState called with same state: ${newState}, ignoring.`);
-         return;
-    }
-    const previousState = state;
-    state = newState;
-    console.log(`State transition: ${previousState} -> ${newState}`);
-    updateUIForStateChange();
-
-    if (newState === 'idle') {
-        stopSimulation();
-        updateControlsOnIdle();
-    } else {
-        if (previousState === 'idle') {
-            startSimulation();
-        }
-        if (newState === 'finished') {
-            playChime();
-            beginFlash();
-        }
-        if (newState === 'heating' || newState === 'paused') {
-             startSimulation();
-        }
-    }
-    updateUI();
+function idle() {
+  cancelAnimationFrame(raf);
+  raf = null;
+  sim = null;
+  document.body.classList.remove('flash');
+  button.textContent = 'Start heating';
+  button.disabled = false;
+  progress.style.display = 'none';
+  info.textContent = '';
+  status.textContent = '';
+  displayRanges();
+  const params = gatherParams();
+  if (!params) { info.textContent = 'Invalid inputs'; return; }
+  if (params.start >= params.target) { info.textContent = 'Start ≥ target'; return; }
+  info.textContent = formatTime(estimate(params, params.start)) + ' s';
 }
-
-// --- Simulation Control ---
-function startSimulation() {
-    if (!simulationInterval) {
-       console.log("Starting simulation interval");
-       sim.lastTickTime = Date.now();
-       simulationInterval = setInterval(simulationStep, SIMULATION_INTERVAL_MS);
-    }
+function tick(now) {
+  if (!sim) return;
+  if (!sim.time) sim.time = now;
+  const dt = Math.min(0.3, (now - sim.time) / 1000);
+  sim.time = now;
+  const hA = Math.max(0, sim.params.loss);
+  const powerIn = sim.heating ? sim.params.power : 0;
+  const net = powerIn - hA * (sim.temperature - sim.params.ambient);
+  sim.temperature += (net / sim.params.capacity) * dt;
+  const span = sim.params.target - sim.params.start;
+  const progressRatio = span > 0 ? clamp((sim.temperature - sim.params.start) / span, 0, 1) : 0;
+  progressFill.style.transform = `scaleX(${progressRatio})`;
+  tempLabel.textContent = sim.temperature.toFixed(1) + ' °C';
+  info.textContent = formatTime(estimate(sim.params, sim.temperature)) + ' s';
+  if (sim.temperature >= sim.params.target - 0.05) {
+    finish();
+    return;
+  }
+  raf = requestAnimationFrame(tick);
 }
-
-function stopSimulation() {
-    if (simulationInterval) {
-        console.log("Stopping simulation interval");
-        clearInterval(simulationInterval);
-        simulationInterval = null;
-    }
-    stopFlash();
+function start() {
+  const params = gatherParams();
+  if (!params) { info.textContent = 'Invalid inputs'; return; }
+  if (params.start >= params.target) { info.textContent = 'Start ≥ target'; return; }
+  sim = { params, temperature: params.start, heating: true, time: 0 };
+  button.disabled = true;
+  progress.style.display = 'block';
+  status.textContent = 'Heating…';
+  progressFill.style.transform = 'scaleX(0)';
+  tempLabel.textContent = params.start.toFixed(1) + ' °C';
+  raf = requestAnimationFrame(tick);
 }
-
-// --- Actions ---
-function startAction() {
-    if (state !== 'idle') { return; }
-    console.log("Start button clicked.");
-    initializeAudio();
-    sim.params = getParams();
-    if (!sim.params) {
-        $('info').textContent = "Invalid Params";
-        console.error("Cannot start: Invalid parameters.");
-        return;
-    }
-    sim.initialTemperature = sim.params.T0;
-    sim.targetTemperature = sim.params.Tt;
-    sim.currentTemperature = sim.params.T0;
-
-    const initialEstimate = estimateRemainingTime(sim.params, sim.currentTemperature);
-    if (sim.params.T0 >= sim.params.Tt) {
-         $('info').textContent = "Start ≥ Target";
-         console.warn("Cannot start: Start temperature is already at or above target.");
-         return;
-    }
-     if (initialEstimate === null || isNaN(initialEstimate) || !isFinite(initialEstimate)) {
-         $('info').textContent = "∞ (Unreachable)";
-         console.warn("Cannot start: Target temperature seems unreachable with current parameters.");
-         return;
-    }
-
-    console.log("Starting heating process...");
-    setState("heating");
+function finish() {
+  cancelAnimationFrame(raf);
+  raf = null;
+  status.textContent = 'Finished';
+  info.textContent = '0 s';
+  document.body.classList.add('flash');
+  setTimeout(() => document.body.classList.remove('flash'), 3000);
+  button.disabled = false;
+  button.textContent = 'Restart';
 }
-
-function pauseAction() {
-    if (state === 'heating') {
-        console.log("Pause action triggered.");
-        setState('paused');
-    }
-}
-function resumeAction() {
-     if (state === 'paused') {
-        console.log("Resume action triggered.");
-        sim.lastTickTime = Date.now();
-        setState('heating');
-     }
-}
-function stopAction() {
-    if (state !== 'idle') {
-        console.log("Stop action triggered (via footer click).");
-        setState('idle');
-    }
-}
-
-// --- Audio & Visual Feedback ---
-let audioCtx = null;
-
-function initializeAudio() {
-    if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            console.log("AudioContext initialized.");
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume().then(() => console.log("AudioContext resumed."))
-                                .catch(e => console.error("Error resuming AudioContext:", e));
-            }
-        } catch (e) {
-            console.error("Web Audio API is not supported or initialization failed.", e);
-            audioCtx = null;
-        }
-    }
-}
-
-function playChime(){
-    if (!audioCtx) {
-        console.warn("AudioContext not available, cannot play chime.");
-        initializeAudio();
-        if (!audioCtx) return;
-    }
-    if (audioCtx.state !== 'running') {
-        console.warn(`AudioContext state is ${audioCtx.state}, attempting to resume for chime...`);
-        audioCtx.resume().then(() => {
-             console.log("AudioContext resumed for chime, trying again.");
-             playChimeInternal();
-        }).catch(e => console.error("Error resuming AudioContext for chime:", e));
-    } else {
-        playChimeInternal();
-    }
-}
-
-function playChimeInternal() {
-     if (!audioCtx || audioCtx.state !== 'running') {
-          console.error("Cannot play chime, AudioContext not running.");
-          return;
-     }
-    console.log("Attempting to play chime...");
-    try {
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-        oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.8);
-        console.log("Chime sound generated.");
-    } catch (e) {
-        console.error("Error playing chime sound:", e);
-    }
-}
-
-// --- Flashing Logic ---
-function beginFlash(){
-    console.log(">>> beginFlash called. Current state:", state);
-    if (flashInterval) {
-        console.log(">>> Flash already running, exiting beginFlash.");
-        return;
-    }
-    // Start interval slightly delayed to ensure class removal/addition is clean
-    setTimeout(() => {
-        console.log(">>> Starting flash interval now.");
-        let on = false;
-        document.body.classList.remove('flash-green'); // Ensure it starts "off"
-
-        flashInterval = setInterval(() => {
-            on = !on;
-            document.body.classList.toggle('flash-green', on);
-        }, 600); // Flash interval
-        console.log(">>> Flash interval started. Interval ID:", flashInterval);
-    }, 50); // Small delay
-}
-
-function stopFlash(){
-    console.log(">>> stopFlash called.");
-    if (flashInterval) {
-        clearInterval(flashInterval);
-        flashInterval = null;
-        console.log(">>> Flash interval cleared.");
-    }
-    // Clean up styles explicitly
-    document.body.classList.remove('flash-green');
-    // No need to reset inline background style anymore
-    console.log(">>> flash-green class removed.");
-}
-
-
-// --- Event Binding ---
-$('startBtn').addEventListener('click', startAction);
-
-$('progressWrap').addEventListener('click', () => {
-    initializeAudio();
-    if (state === 'heating') { pauseAction(); }
-    else if (state === 'paused') { resumeAction(); }
+button.addEventListener('click', () => {
+  document.body.classList.remove('flash');
+  if (sim) { idle(); } else { start(); }
 });
-
-// Stop simulation/flashing ONLY on footer tap
-$('pageFooter').addEventListener('click', (e) => {
-    if (state !== 'idle') {
-        console.log("Footer click detected, stopping simulation.");
-        initializeAudio(); // Ensure audio context is active
-        stopAction();
-    }
+progress.addEventListener('click', () => {
+  if (!sim) return;
+  sim.heating = !sim.heating;
+  status.textContent = sim.heating ? 'Heating…' : 'Paused';
+  if (sim.heating && !raf) raf = requestAnimationFrame(tick);
 });
-
-// Initialize audio on any click within the main card if context isn't already active
-// This helps ensure audio is ready for the chime later, without interfering with stop logic.
-$('card').addEventListener('click', () => {
-    initializeAudio();
+Object.values(inputs).forEach(input => {
+  input.addEventListener('input', () => sim ? null : idle());
+  input.addEventListener('change', () => sim ? null : idle());
 });
-
-
-// Input listeners
-[startTemp, targetTemp, waterMass, mugMass, power0, heatLoss, roomTemp].forEach(el => {
-  el.addEventListener('input', () => { if (state === 'idle') { updateControlsOnIdle(); } });
-  el.addEventListener('change', () => { if (state === 'idle') { saveSettings(); updateControlsOnIdle(); } });
-});
-
-// --- Initialization ---
-document.addEventListener('DOMContentLoaded', (event) => {
-    console.log("DOM Content Loaded.");
-    loadSettings();
-    updateControlsOnIdle();
-    setState("idle");
-    debugContainer.style.display = 'none';
-    isDebugVisible = false;
-    toggleDebugBtn.textContent = 'Show Debug Log';
-});
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    console.log("Page unloading, stopping simulation.");
-    stopSimulation();
-});
-
+idle();
 </script>
 </body>
 </html>
