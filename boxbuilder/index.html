@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BoxBuilder 3D</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) 1fr;
+        min-height: 100vh;
+        background: #111;
+        color: #f5f5f5;
+      }
+      aside {
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.5);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      main {
+        position: relative;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+      pre {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow: auto;
+        max-height: 50vh;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.5rem;
+      }
+      a {
+        color: #8bdcf7;
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h1>BoxBuilder</h1>
+      <p>
+        Visualisoi puurakenteita venytetyillä boxeilla. Syöte kuvaillaan JSON-muodossa ja
+        voidaan vaihtaa helposti.
+      </p>
+      <p>
+        Esimerkkipiirros: yksinkertainen pöytä. Muokkaa <code>src/drawings/table.json</code>
+        tai lisää uusia tiedostoja. Lataa sivu uudelleen nähdäksesi muutokset.
+      </p>
+      <pre id="drawingPreview"></pre>
+    </aside>
+    <main>
+      <div id="app"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
