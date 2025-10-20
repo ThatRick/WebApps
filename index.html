@@ -1,205 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Microwave Timer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root {
-  color-scheme: dark;
-  font-family: system-ui, sans-serif;
-  --bg: #101014;
-  --panel: #1b1b20;
-  --accent: #39f18d;
-  --muted: #7f8696;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: #f0f0f5; }
-main { width: min(380px, 92vw); background: var(--panel); padding: 1.8rem; border-radius: 18px; display: grid; gap: 1.1rem; box-shadow: 0 18px 40px rgba(0,0,0,0.4); }
-h1 { font-size: 1.35rem; font-weight: 600; text-align: center; letter-spacing: 0.04em; }
-label { display: grid; gap: .35rem; font-size: .95rem; color: var(--muted); }
-input { accent-color: var(--accent); }
-input[type=range] { width: 100%; }
-input[type=number] { width: 100%; padding: .55rem .7rem; border-radius: 10px; border: 1px solid #2d303d; background: #101119; color: inherit; }
-small { color: inherit; font-weight: 600; font-size: 1.2rem; }
-button { border: none; border-radius: 12px; padding: .75rem; font-size: 1.05rem; font-weight: 600; cursor: pointer; background: linear-gradient(120deg, #2ecfff, var(--accent)); color: #06241a; transition: transform .2s; }
-button:active { transform: scale(.98); }
-#progress { height: 54px; border-radius: 12px; overflow: hidden; display: none; background: #11131c; position: relative; cursor: pointer; }
-#progress > div { position: absolute; inset: 0; background: linear-gradient(120deg, #2ecfff, var(--accent)); transform-origin: left; transform: scaleX(0); transition: transform .15s linear; }
-#progress span { position: absolute; inset: 0; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
-#info { text-align: center; font-family: "SFMono-Regular", ui-monospace, Menlo, monospace; font-size: 1.1rem; min-height: 1.1em; }
-#status { text-align: center; color: var(--muted); min-height: 1em; }
-details { border-top: 1px solid #252837; padding-top: .8rem; }
-summary { cursor: pointer; color: var(--accent); font-weight: 600; }
-body.flash { animation: flash .6s alternate infinite; }
-@keyframes flash { from { background: var(--bg); } to { background: #063; } }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype Landing Page</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 3rem 1.5rem;
+      background: var(--bg);
+    }
+    main {
+      width: min(720px, 100%);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 2.4rem 2rem;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+      display: grid;
+      gap: 2rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+    li {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.08));
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    li:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2);
+    }
+    a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 8px;
+    }
+    footer {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-<main>
-  <h1>Microwave Timer</h1>
-  <label>Start temperature <small id="startDisplay"></small>
-    <input id="start" type="range" min="5" max="25" step="0.1" value="13">
-  </label>
-  <label>Target temperature <small id="targetDisplay"></small>
-    <input id="target" type="range" min="60" max="95" step="0.5" value="80">
-  </label>
-  <details>
-    <summary>Advanced</summary>
-    <label>Water mass (g)
-      <input id="water" type="number" value="300" min="1" step="1">
-    </label>
-    <label>Mug mass (g)
-      <input id="mug" type="number" value="250" min="0" step="1">
-    </label>
-    <label>Microwave power (W)
-      <input id="power" type="number" value="600" min="0" step="10">
-    </label>
-    <label>Heat loss hA (W/°C)
-      <input id="loss" type="number" value="1" min="0" step="0.1">
-    </label>
-    <label>Room temperature (°C)
-      <input id="ambient" type="number" value="22" step="0.1">
-    </label>
-  </details>
-  <button id="startBtn" type="button">Start heating</button>
-  <div id="progress"><div></div><span id="tempLabel"></span></div>
-  <div id="info"></div>
-  <div id="status"></div>
-</main>
-<script>
-const $ = id => document.getElementById(id);
-const displays = { start: $('startDisplay'), target: $('targetDisplay') };
-const inputs = {
-  start: $('start'),
-  target: $('target'),
-  water: $('water'),
-  mug: $('mug'),
-  power: $('power'),
-  loss: $('loss'),
-  ambient: $('ambient')
-};
-const progress = $('progress');
-const progressFill = progress.firstElementChild;
-const tempLabel = $('tempLabel');
-const info = $('info');
-const status = $('status');
-const button = $('startBtn');
-const heatCapacity = { water: 4186, ceramic: 880 };
-let raf = null;
-let sim = null;
-
-function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
-function displayRanges() {
-  displays.start.textContent = Number(inputs.start.value).toFixed(1) + ' °C';
-  displays.target.textContent = Number(inputs.target.value).toFixed(1) + ' °C';
-}
-function read(id, fallback = 0) {
-  const value = Number.parseFloat(inputs[id].value);
-  return Number.isFinite(value) ? value : fallback;
-}
-function estimate(p, current) {
-  if (current >= p.target) return 0;
-  const P = Math.max(0, p.power);
-  const hA = Math.max(0, p.loss);
-  if (!P) return Infinity;
-  if (!hA) return (p.capacity * (p.target - current)) / P;
-  const numerator = P - hA * (current - p.ambient);
-  const denominator = P - hA * (p.target - p.ambient);
-  if (numerator <= 0 || denominator <= 0) return Infinity;
-  return (p.capacity / hA) * Math.log(numerator / denominator);
-}
-function formatTime(seconds) {
-  if (!Number.isFinite(seconds)) return '∞';
-  const s = Math.max(0, Math.round(seconds));
-  const m = Math.floor(s / 60);
-  const rest = String(s % 60).padStart(2, '0');
-  return m ? `${m}:${rest}` : String(s % 60);
-}
-function gatherParams() {
-  const start = read('start');
-  const target = read('target');
-  const water = clamp(read('water', 300) / 1000, 0, 10);
-  const mug = clamp(read('mug', 0) / 1000, 0, 10);
-  const power = clamp(read('power', 600), 0, 2000);
-  const loss = clamp(read('loss', 1), 0, 100);
-  const ambient = read('ambient', 22);
-  const capacity = water * heatCapacity.water + mug * heatCapacity.ceramic;
-  return capacity > 0 ? { start, target, power, loss, ambient, capacity } : null;
-}
-function idle() {
-  cancelAnimationFrame(raf);
-  raf = null;
-  sim = null;
-  document.body.classList.remove('flash');
-  button.textContent = 'Start heating';
-  button.disabled = false;
-  progress.style.display = 'none';
-  info.textContent = '';
-  status.textContent = '';
-  displayRanges();
-  const params = gatherParams();
-  if (!params) { info.textContent = 'Invalid inputs'; return; }
-  if (params.start >= params.target) { info.textContent = 'Start ≥ target'; return; }
-  info.textContent = formatTime(estimate(params, params.start)) + ' s';
-}
-function tick(now) {
-  if (!sim) return;
-  if (!sim.time) sim.time = now;
-  const dt = Math.min(0.3, (now - sim.time) / 1000);
-  sim.time = now;
-  const hA = Math.max(0, sim.params.loss);
-  const powerIn = sim.heating ? sim.params.power : 0;
-  const net = powerIn - hA * (sim.temperature - sim.params.ambient);
-  sim.temperature += (net / sim.params.capacity) * dt;
-  const span = sim.params.target - sim.params.start;
-  const progressRatio = span > 0 ? clamp((sim.temperature - sim.params.start) / span, 0, 1) : 0;
-  progressFill.style.transform = `scaleX(${progressRatio})`;
-  tempLabel.textContent = sim.temperature.toFixed(1) + ' °C';
-  info.textContent = formatTime(estimate(sim.params, sim.temperature)) + ' s';
-  if (sim.temperature >= sim.params.target - 0.05) {
-    finish();
-    return;
-  }
-  raf = requestAnimationFrame(tick);
-}
-function start() {
-  const params = gatherParams();
-  if (!params) { info.textContent = 'Invalid inputs'; return; }
-  if (params.start >= params.target) { info.textContent = 'Start ≥ target'; return; }
-  sim = { params, temperature: params.start, heating: true, time: 0 };
-  button.disabled = true;
-  progress.style.display = 'block';
-  status.textContent = 'Heating…';
-  progressFill.style.transform = 'scaleX(0)';
-  tempLabel.textContent = params.start.toFixed(1) + ' °C';
-  raf = requestAnimationFrame(tick);
-}
-function finish() {
-  cancelAnimationFrame(raf);
-  raf = null;
-  status.textContent = 'Finished';
-  info.textContent = '0 s';
-  document.body.classList.add('flash');
-  setTimeout(() => document.body.classList.remove('flash'), 3000);
-  button.disabled = false;
-  button.textContent = 'Restart';
-}
-button.addEventListener('click', () => {
-  document.body.classList.remove('flash');
-  if (sim) { idle(); } else { start(); }
-});
-progress.addEventListener('click', () => {
-  if (!sim) return;
-  sim.heating = !sim.heating;
-  status.textContent = sim.heating ? 'Heating…' : 'Paused';
-  if (sim.heating && !raf) raf = requestAnimationFrame(tick);
-});
-Object.values(inputs).forEach(input => {
-  input.addEventListener('input', () => sim ? null : idle());
-  input.addEventListener('change', () => sim ? null : idle());
-});
-idle();
-</script>
+  <main>
+    <header>
+      <h1>Prototype Launchpad</h1>
+      <p>Auto-generated directory of available prototypes. Add a folder with an <code>index.html</code> (or any HTML file) and run <code>node scripts/updateLandingPage.js</code> to refresh this page.</p>
+    </header>
+    <section aria-labelledby="prototype-list">
+      <h2 id="prototype-list" style="font-size:1.3rem; margin:0;">Prototypes</h2>
+      <ul>
+        <li><a href="boxbuilder/">Boxbuilder</a></li>
+        <li><a href="teamDylan/playlist.html">Team Dylan Playlist</a></li>
+      </ul>
+    </section>
+    <footer>
+      <p>Last generated on 2025-10-20T19:09:54.656Z</p>
+    </footer>
+  </main>
 </body>
 </html>
