@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>100 - Core robot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #f5f7fa; color: #1f2933; }
+    main { padding: 32px; box-sizing: border-box; }
+    h1 { margin: 0 0 24px; font-size: 24px; font-weight: 600; }
+
+    .diagram { position: relative; overflow: visible; }
+    .diagram-content { display: grid; gap: 20px 16px; align-items: start; padding-bottom: 160px; width: max-content; }
+    .cell { min-height: 8px; display: flex; justify-content: center; }
+
+    .step-card, .transition-card { display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; background: #ffffff; border: 1px solid #d2d6dc; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.08); padding: 14px 16px; min-width: 220px; }
+    .step-card { border-color: #9ac6dd; border-radius: 0; width: 100%; }
+    .transition-card { border: 1px solid #9aa3af; background: #f7f8fa; border-radius: 16px; width: max-content; margin-left: 12px; margin-right: 12px; box-shadow: none; padding: 8px 16px; }
+    .step-card .header, .transition-card .header { display: flex; flex-direction: column; gap: 4px; }
+    .step-card .header { flex-direction: row; justify-content: space-between; align-items: baseline; }
+    .step-card .header .left { font-size: 16px; font-weight: 600; }
+    .step-card .header .right { font-size: 16px; font-weight: 600; text-align: right; }
+    .transition-card .header .primary { font-size: 14px; font-weight: 600; text-align: center; color: #4b5563; }
+    .card-body { margin-top: 4px; border-radius: 10px; padding: 8px 10px; font-family: Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.35; color: #1f2933; }
+    .step-card .card-body { background: #edf6fb; white-space: pre-wrap; }
+    .transition-card .card-body { background: #f2f3f5; white-space: pre; overflow-x: auto; }
+    .transition-stack { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+    .hint { font-size: 12px; color: #6b7280; text-align: center; margin-top: 8px; }
+
+    /* Overlay and edges */
+    .diagram-overlay { position: absolute; left: 0; top: 0; width: auto; height: auto; pointer-events: none; overflow: visible; }
+    .edge { fill: none; stroke-width: 2; opacity: 1; }
+    .edge.step-to-tr { stroke: #9aa3af; }
+    .edge.tr-to-step { stroke: #9aa3af; }
+    .edge.tr-to-jump { stroke: #9aa3af; }
+    .jump-label { font: 12px/1.2 "Segoe UI", Arial, sans-serif; fill: #1f2933; cursor: pointer; }
+    .jump-label-bg { fill: #edf6fb; stroke: #9ac6dd; stroke-width: 1; rx: 4; ry: 4; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>100 - Core robot</h1>
+    <div class="diagram">
+      <div class="diagram-content">
+        <div class="cell" style="grid-column: 1; grid-row: 1;"><div class="step-card" id="step-1-r1" data-step-no="1" data-row="1" data-col="1">
+  <div class="header">
+    <div class="left">Wait for start</div>
+    <div class="right">S1</div>
+  </div>
+  <div class="card-body">N: #No_action
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 2;"><div class="transition-stack">
+<div class="transition-card" id="tr-1-r2-c1" data-tr-no="1" data-row="2" data-col="1" data-from-steps="1" data-direct-to-steps="2" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="180" height="22" viewBox="0 0 180 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Auto_active</text></svg></div>
+  <div class="header">
+    <div class="primary">Auto active (T1)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 3;"><div class="step-card" id="step-2-r3" data-step-no="2" data-row="3" data-col="1">
+  <div class="header">
+    <div class="left">Move vertical to home position</div>
+    <div class="right">S2</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisY.MoveToHome
+R: &quot;100_Robot_DB&quot;.Outputs.Y2_Turn_to_release
+N: &quot;100, Input status_DB&quot;.Input_status.B[4].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 4;"><div class="transition-stack">
+<div class="transition-card" id="tr-2-r4-c1" data-tr-no="2" data-row="4" data-col="1" data-from-steps="2" data-direct-to-steps="3" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="286" height="40" viewBox="0 0 286 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisY.AtHomePos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B4_Up_position</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Axis Y at home position (T2)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 5;"><div class="step-card" id="step-3-r5" data-step-no="3" data-row="5" data-col="1">
+  <div class="header">
+    <div class="left">Move horizontal to home</div>
+    <div class="right">S3</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisX.MoveToHome
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 6;"><div class="transition-stack">
+<div class="transition-card" id="tr-3-r6-c1" data-tr-no="3" data-row="6" data-col="1" data-from-steps="3" data-direct-to-steps="23" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="208" height="22" viewBox="0 0 208 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisX.AtHomePos</text></svg></div>
+  <div class="header">
+    <div class="primary">Axis X at home position (T3)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 7;"><div class="step-card" id="step-23-r7" data-step-no="23" data-row="7" data-col="1">
+  <div class="header">
+    <div class="left">Check clearing station</div>
+    <div class="right">S23</div>
+  </div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-30-r8-c1" data-tr-no="30" data-row="8" data-col="1" data-from-steps="23" data-direct-to-steps="4" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="384" height="58" viewBox="0 0 384 58"><rect x="6" y="7" width="24" height="46" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="34" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Clearing_station</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 115_Stepping_table_DB.Status.Core_in_station</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">NOT 116_Conveyor_DB.Clearing_station</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">No clearing station (T30)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 9; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-31-r8-c9" data-tr-no="31" data-row="8" data-col="9" data-from-steps="23" data-direct-to-steps="24" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="265" height="40" viewBox="0 0 265 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Clearing_station</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">Check clearing station.U &gt; t#1S</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Has waste core (T31)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 9;"><div class="step-card" id="step-4-r9" data-step-no="4" data-row="9" data-col="1">
+  <div class="header">
+    <div class="left">Wait for core request</div>
+    <div class="right">S4</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Ready_to_stop
+N: &quot;100_Robot_DB&quot;.Sequence.Batch_No := &quot;100_Robot_DB&quot;.Sequence.First_batch_No
+N: &quot;100_Robot_DB&quot;.Sequence.Source_box_No := &quot;100_Robot_DB&quot;.Request_handler.Source_Box
+</div>
+</div></div><div class="cell" style="grid-column: 9; grid-row: 9;"><div class="step-card" id="step-24-r9" data-step-no="24" data-row="9" data-col="9">
+  <div class="header">
+    <div class="left">Mark waste core</div>
+    <div class="right">S24</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Mark_waste_core
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 10;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-4-r10-c1" data-tr-no="4" data-row="10" data-col="1" data-from-steps="4" data-direct-to-steps="5" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="349" height="58" viewBox="0 0 349 58"><rect x="6" y="7" width="24" height="46" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="34" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Request_handler.Requested</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Calc_pickup_position.Available</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Temporary_stop</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Core requested (T4)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 8; grid-row: 10;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-27-r10-c8" data-tr-no="27" data-row="10" data-col="8" data-from-steps="4" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 2, &quot;name&quot;: &quot;Move vertical to home position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="272" height="40" viewBox="0 0 272 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Wait for core request.U &gt; t#3S</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.AxisX.AtHomePos</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">No requests, go home (T27)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 9; grid-row: 10;"><div class="transition-stack">
+<div class="transition-card" id="tr-32-r10-c9" data-tr-no="32" data-row="10" data-col="9" data-from-steps="24" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 13, &quot;name&quot;: &quot;Move horizontal to release position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="201" height="22" viewBox="0 0 201 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Mark waste core.U &gt; t#100MS</text></svg></div>
+  <div class="header">
+    <div class="primary">Waste core marked (T32)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 11;"><div class="step-card" id="step-5-r11" data-step-no="5" data-row="11" data-col="1">
+  <div class="header">
+    <div class="left">Move horizontal to pickup position</div>
+    <div class="right">S5</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisX.MoveToPickup
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 12;"><div class="transition-stack">
+<div class="transition-card" id="tr-5-r12-c1" data-tr-no="5" data-row="12" data-col="1" data-from-steps="5" data-direct-to-steps="6" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="222" height="22" viewBox="0 0 222 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisX.AtPickupPos</text></svg></div>
+  <div class="header">
+    <div class="primary">Axis X at pickup position (T5)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 13;"><div class="step-card" id="step-6-r13" data-step-no="6" data-row="13" data-col="1">
+  <div class="header">
+    <div class="left">Turn to pickup position</div>
+    <div class="right">S6</div>
+  </div>
+  <div class="card-body">R: &quot;100_Robot_DB&quot;.Outputs.Y2_Turn_to_release
+N: &quot;100, Input status_DB&quot;.Input_status.B[11].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 14;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-6-r14-c1" data-tr-no="6" data-row="14" data-col="1" data-from-steps="6" data-direct-to-steps="7" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="342" height="58" viewBox="0 0 342 58"><rect x="6" y="7" width="24" height="46" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="34" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Temporary_stop</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B11_Turning_Pickup_pos</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">115_Stepping_table_DB.Ready_to_receive</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Turning at pickup position (T6)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 7; grid-row: 14;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-24-r14-c7" data-tr-no="24" data-row="14" data-col="7" data-from-steps="6" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 2, &quot;name&quot;: &quot;Move vertical to home position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="201" height="22" viewBox="0 0 201 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Temporary_stop</text></svg></div>
+  <div class="header">
+    <div class="primary">Stop requested (T24)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 15;"><div class="step-card" id="step-7-r15" data-step-no="7" data-row="15" data-col="1">
+  <div class="header">
+    <div class="left">Lower to pickup position</div>
+    <div class="right">S7</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisY.MoveToPickup
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 16;"><div class="transition-stack">
+<div class="transition-card" id="tr-7-r16-c1" data-tr-no="7" data-row="16" data-col="1" data-from-steps="7" data-direct-to-steps="8" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="222" height="22" viewBox="0 0 222 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisY.AtPickupPos</text></svg></div>
+  <div class="header">
+    <div class="primary">Axis Y at pickup position (T7)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 17;"><div class="step-card" id="step-8-r17" data-step-no="8" data-row="17" data-col="1">
+  <div class="header">
+    <div class="left">Wait for suction</div>
+    <div class="right">S8</div>
+  </div>
+  <div class="card-body">S: &quot;100_Robot_DB&quot;.Outputs.Y1_Vacuum_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 18;"><div class="transition-stack">
+<div class="transition-card" id="tr-8-r18-c1" data-tr-no="8" data-row="18" data-col="1" data-from-steps="8" data-direct-to-steps="9" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="215" height="22" viewBox="0 0 215 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Wait for suction.T &gt; t#1000MS</text></svg></div>
+  <div class="header">
+    <div class="primary">Suction wait time elapsed (T8)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 19;"><div class="step-card" id="step-9-r19" data-step-no="9" data-row="19" data-col="1">
+  <div class="header">
+    <div class="left">Lift core up</div>
+    <div class="right">S9</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisY.MoveToHome
+L: &quot;100_Robot_DB&quot;.DriveY.Control.Slow_speed, T#1s
+N: &quot;100, Input status_DB&quot;.Input_status.B[4].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 20;"><div class="transition-stack">
+<div class="transition-card" id="tr-9-r20-c1" data-tr-no="9" data-row="20" data-col="1" data-from-steps="9" data-direct-to-steps="10" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="286" height="40" viewBox="0 0 286 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisY.AtHomePos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B4_Up_position</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Vertical axis lifted up (T9)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 21;"><div class="step-card" id="step-10-r21" data-step-no="10" data-row="21" data-col="1">
+  <div class="header">
+    <div class="left">Check for core detection</div>
+    <div class="right">S10</div>
+  </div>
+  <div class="card-body">N: #No_action
+N: &quot;100, Input status_DB&quot;.Input_status.B[21].Wait_on
+N: &quot;100, Input status_DB&quot;.Input_status.B[22].Wait_on
+N: &quot;100, Input status_DB&quot;.Input_status.B[23].Wait_on
+N: &quot;100, Input status_DB&quot;.Input_status.B[24].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 22;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-10-r22-c1" data-tr-no="10" data-row="22" data-col="1" data-from-steps="10" data-direct-to-steps="11" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="307" height="76" viewBox="0 0 307 76"><rect x="6" y="7" width="24" height="64" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="43" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B1_Sensing_core_1</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B1_Sensing_core_2</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B1_Sensing_core_3</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B1_Sensing_core_4</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Core(s) detected by all sensors (T10)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 6; grid-row: 22;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-21-r22-c6" data-tr-no="21" data-row="22" data-col="6" data-from-steps="10" data-direct-to-steps="20" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="271" height="22" viewBox="0 0 271 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Check for core detection.T &gt; t#2000MS</text></svg></div>
+  <div class="header">
+    <div class="primary">Core(s) not detected by all sensors (T21)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 23;"><div class="step-card" id="step-11-r23" data-step-no="11" data-row="23" data-col="1">
+  <div class="header">
+    <div class="left">Fetch core data</div>
+    <div class="right">S11</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Fetch_core_data
+</div>
+</div></div><div class="cell" style="grid-column: 6; grid-row: 23;"><div class="step-card" id="step-20-r23" data-step-no="20" data-row="23" data-col="6">
+  <div class="header">
+    <div class="left">Error lifting cores</div>
+    <div class="right">S20</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Alarms.All_cores_not_lifted
+N: &quot;100_Robot_DB&quot;.Sequence.Ready_to_stop
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 24;"><div class="transition-stack">
+<div class="transition-card" id="tr-11-r24-c1" data-tr-no="11" data-row="24" data-col="1" data-from-steps="11" data-direct-to-steps="12" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="257" height="22" viewBox="0 0 257 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Transfer_from_box.Done</text></svg></div>
+  <div class="header">
+    <div class="primary">Core data fetched (T11)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 6; grid-row: 24;"><div class="transition-stack">
+<div class="transition-card" id="tr-22-r24-c6" data-tr-no="22" data-row="24" data-col="6" data-from-steps="20" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 7, &quot;name&quot;: &quot;Lower to pickup position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="215" height="22" viewBox="0 0 215 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Control_Zone_1_DB.Acknowledge</text></svg></div>
+  <div class="header">
+    <div class="primary">Lifting error acknowledged (T22)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 25;"><div class="step-card" id="step-12-r25" data-step-no="12" data-row="25" data-col="1">
+  <div class="header">
+    <div class="left">Turn to release position</div>
+    <div class="right">S12</div>
+  </div>
+  <div class="card-body">S: &quot;100_Robot_DB&quot;.Outputs.Y2_Turn_to_release
+N: &quot;100, Input status_DB&quot;.Input_status.B[12].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 26;"><div class="transition-stack">
+<div class="transition-card" id="tr-12-r26-c1" data-tr-no="12" data-row="26" data-col="1" data-from-steps="12" data-direct-to-steps="13" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="566" height="40" viewBox="0 0 566 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">≥1</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B12_Turning_Release_pos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">Turn to release position.T &gt; 100_Robot_DB.Calculated.Delay_move_to_release</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Turning at release position (T12)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 27;"><div class="step-card" id="step-13-r27" data-step-no="13" data-row="27" data-col="1">
+  <div class="header">
+    <div class="left">Move horizontal to release position</div>
+    <div class="right">S13</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisX.MoveToRelease
+S: &quot;100_Robot_DB&quot;.Outputs.Y2_Turn_to_release
+N: &quot;100, Input status_DB&quot;.Input_status.B[12].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 28;"><div class="transition-stack">
+<div class="transition-card" id="tr-13-r28-c1" data-tr-no="13" data-row="28" data-col="1" data-from-steps="13" data-direct-to-steps="14" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="349" height="58" viewBox="0 0 349 58"><rect x="6" y="7" width="24" height="46" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="34" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisX.AtReleasePos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B12_Turning_Release_pos</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">115_Stepping_table_DB.Ready_to_receive</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Vertical and rotation at release position (T13)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 29;"><div class="step-card" id="step-14-r29" data-step-no="14" data-row="29" data-col="1">
+  <div class="header">
+    <div class="left">Lower to release position</div>
+    <div class="right">S14</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisY.MoveToRelease
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 30;"><div class="transition-stack">
+<div class="transition-card" id="tr-14-r30-c1" data-tr-no="14" data-row="30" data-col="1" data-from-steps="14" data-direct-to-steps="15" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="229" height="22" viewBox="0 0 229 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisY.AtReleasePos</text></svg></div>
+  <div class="header">
+    <div class="primary">Vertical at release position (T14)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 31;"><div class="step-card" id="step-15-r31" data-step-no="15" data-row="31" data-col="1">
+  <div class="header">
+    <div class="left">Release core</div>
+    <div class="right">S15</div>
+  </div>
+  <div class="card-body">R: &quot;100_Robot_DB&quot;.Outputs.Y1_Vacuum_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 32;"><div class="transition-stack">
+<div class="transition-card" id="tr-15-r32-c1" data-tr-no="15" data-row="32" data-col="1" data-from-steps="15" data-direct-to-steps="16" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="187" height="22" viewBox="0 0 187 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Release core.T &gt; t#1000MS</text></svg></div>
+  <div class="header">
+    <div class="primary">Core data was moved to following (T15)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 33;"><div class="step-card" id="step-16-r33" data-step-no="16" data-row="33" data-col="1">
+  <div class="header">
+    <div class="left">Lift robot up</div>
+    <div class="right">S16</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.AxisY.MoveToHome
+N: &quot;100, Input status_DB&quot;.Input_status.B[4].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 34;"><div class="transition-stack">
+<div class="transition-card" id="tr-16-r34-c1" data-tr-no="16" data-row="34" data-col="1" data-from-steps="16" data-direct-to-steps="21" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="286" height="40" viewBox="0 0 286 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.AxisY.AtHomePos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Inputs.B4_Up_position</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Robot lifted (T16)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 35;"><div class="step-card" id="step-21-r35" data-step-no="21" data-row="35" data-col="1">
+  <div class="header">
+    <div class="left">Check that all cores released</div>
+    <div class="right">S21</div>
+  </div>
+  <div class="card-body">N: #No_action
+N: &quot;100, Input status_DB&quot;.Input_status.B[21].Wait_off
+N: &quot;100, Input status_DB&quot;.Input_status.B[22].Wait_off
+N: &quot;100, Input status_DB&quot;.Input_status.B[23].Wait_off
+N: &quot;100, Input status_DB&quot;.Input_status.B[24].Wait_off
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 36;"><div class="transition-stack">
+<div class="transition-card" id="tr-23-r36-c1" data-tr-no="23" data-row="36" data-col="1" data-from-steps="21" data-direct-to-steps="17" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="335" height="76" viewBox="0 0 335 76"><rect x="6" y="7" width="24" height="64" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="43" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Inputs.B1_Sensing_core_1</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Inputs.B1_Sensing_core_2</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Inputs.B1_Sensing_core_3</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Inputs.B1_Sensing_core_4</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">No cores detected (T23)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 37;"><div class="step-card" id="step-17-r37" data-step-no="17" data-row="37" data-col="1">
+  <div class="header">
+    <div class="left">Transfer core data</div>
+    <div class="right">S17</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Transfer_core_data
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 38;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-17-r38-c1" data-tr-no="17" data-row="38" data-col="1" data-from-steps="17" data-direct-to-steps="18" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="279" height="40" viewBox="0 0 279 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Transfer_to_115.Done</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Clearing_station</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Core data transfered (T17)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 5; grid-row: 38;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-34-r38-c5" data-tr-no="34" data-row="38" data-col="5" data-from-steps="17" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 2, &quot;name&quot;: &quot;Move vertical to home position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="279" height="40" viewBox="0 0 279 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Transfer_to_115.Done</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Clearing_station</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Core data transfered, clearing station (T34)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 39;"><div class="step-card" id="step-18-r39" data-step-no="18" data-row="39" data-col="1">
+  <div class="header">
+    <div class="left">Check if all cores are delivered</div>
+    <div class="right">S18</div>
+  </div>
+  <div class="card-body">N: #No_action
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 40;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-18-r40-c1" data-tr-no="18" data-row="40" data-col="1" data-from-steps="18" data-direct-to-steps="19" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="530" height="22" viewBox="0 0 530 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Sequence.Batch_No &gt;= 100_Robot_DB.Core_from_box.Last_Batch_No</text></svg></div>
+  <div class="header">
+    <div class="primary">All batches delivered (T18)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 40;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-20-r40-c3" data-tr-no="20" data-row="40" data-col="3" data-from-steps="18" data-direct-to-steps="22" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="523" height="22" viewBox="0 0 523 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Sequence.Batch_No &lt; 100_Robot_DB.Core_from_box.Last_Batch_No</text></svg></div>
+  <div class="header">
+    <div class="primary">More batches to deliver (T20)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 41;"><div class="step-card" id="step-19-r41" data-step-no="19" data-row="41" data-col="1">
+  <div class="header">
+    <div class="left">Core request completed</div>
+    <div class="right">S19</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Request_completed
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 41;"><div class="step-card" id="step-22-r41" data-step-no="22" data-row="41" data-col="3">
+  <div class="header">
+    <div class="left">Process next batch</div>
+    <div class="right">S22</div>
+  </div>
+  <div class="card-body">N: &quot;100_Robot_DB&quot;.Sequence.Batch_No := &quot;100_Robot_DB&quot;.Sequence.Batch_No + 1
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 42;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-19-r42-c1" data-tr-no="19" data-row="42" data-col="1" data-from-steps="19" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 4, &quot;name&quot;: &quot;Wait for core request&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="286" height="40" viewBox="0 0 286 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Core request completed.T &gt; t#100MS</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Temporary_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Request completed, Ready for next (T19)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 2; grid-row: 42;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-25-r42-c2" data-tr-no="25" data-row="42" data-col="2" data-from-steps="19" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 2, &quot;name&quot;: &quot;Move vertical to home position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="286" height="40" viewBox="0 0 286 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Core request completed.T &gt; t#100MS</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Temporary_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Request completed, Temp stop requested (T25)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 42;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-28-r42-c3" data-tr-no="28" data-row="42" data-col="3" data-from-steps="22" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 5, &quot;name&quot;: &quot;Move horizontal to pickup position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="265" height="40" viewBox="0 0 265 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Process next batch.U &gt; t#100MS</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 100_Robot_DB.Temporary_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Get next batch (T28)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 42;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-29-r42-c4" data-tr-no="29" data-row="42" data-col="4" data-from-steps="22" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 2, &quot;name&quot;: &quot;Move vertical to home position&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="258" height="40" viewBox="0 0 258 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Process next batch.U &gt; t#100MS</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">100_Robot_DB.Temporary_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Temp stop requested (T29)</div>
+  </div>
+</div>
+</div></div>
+      </div>
+      <svg class="diagram-overlay" id="diagram-overlay" width="0" height="0" viewBox="0 0 0 0">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3af"></path>
+          </marker>
+        </defs>
+        <g id="edges-layer"></g>
+        <g id="labels-layer"></g>
+      </svg>
+    </div>
+  </main>
+  <script>
+    (function() {
+      const diagram = document.querySelector('.diagram');
+      const overlay = document.getElementById('diagram-overlay');
+      const edgesLayer = document.getElementById('edges-layer');
+      const labelsLayer = document.getElementById('labels-layer');
+      const content = document.querySelector('.diagram-content');
+
+      // Horizontal offset (in px) from a step when drawing orthogonal edges.
+      // Used for: step->transition (near source step) and transition->step (near target step)
+      const EDGE_HORIZONTAL_OFFSET = 20;
+
+      function setOverlaySize() {
+        if (!diagram || !overlay) return;
+        const w = content ? content.scrollWidth : diagram.scrollWidth;
+        const h = content ? content.scrollHeight : diagram.scrollHeight;
+        overlay.setAttribute('width', String(w));
+        overlay.setAttribute('height', String(h));
+        overlay.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      }
+
+      function relRect(el) {
+        const dRect = diagram.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        // coordinates relative to the diagram (overlay origin)
+        const x = r.left - dRect.left;
+        const y = r.top - dRect.top;
+        return { x, y, w: r.width, h: r.height };
+      }
+
+      function storePositions() {
+        const all = diagram.querySelectorAll('.step-card, .transition-card');
+        all.forEach(el => {
+          const { x, y, w, h } = relRect(el);
+          el.dataset.absX = String(Math.round(x));
+          el.dataset.absY = String(Math.round(y));
+          el.dataset.absW = String(Math.round(w));
+          el.dataset.absH = String(Math.round(h));
+        });
+      }
+
+      function clearEdges() {
+        while (edgesLayer.firstChild) edgesLayer.removeChild(edgesLayer.firstChild);
+        while (labelsLayer.firstChild) labelsLayer.removeChild(labelsLayer.firstChild);
+      }
+
+      function pathCubic(x1, y1, x2, y2) {
+        const X1 = Math.round(x1), Y1 = Math.round(y1);
+        const X2 = Math.round(x2), Y2 = Math.round(y2);
+        const dy = Math.abs(Y2 - Y1);
+        const k = Math.max(20, Math.round(dy * 0.3));
+        const c1x = X1, c1y = Y1 + k;
+        const c2x = X2, c2y = Y2 - k;
+        return `M ${X1} ${Y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${X2} ${Y2}`;
+      }
+
+      function pathOrthogonal(x1, y1, x2, y2, positionMode, offsetPx) {
+        // positionMode: 'source' => horizontal near source step
+        //               'target' => horizontal near target step
+        const X1 = Math.round(x1), Y1 = Math.round(y1);
+        const X2 = Math.round(x2), Y2 = Math.round(y2);
+        const dy = Y2 - Y1;
+        const sign = dy >= 0 ? 1 : -1;
+        const off = Math.max(4, Number(offsetPx || 0));
+        let yMid;
+        if (positionMode === 'source') {
+          yMid = Y1 + sign * off;
+        } else {
+          // default to 'target'
+          yMid = Y2 - sign * off;
+        }
+        const YM = Math.round(yMid);
+        return `M ${X1} ${Y1} L ${X1} ${YM} L ${X2} ${YM} L ${X2} ${Y2}`;
+      }
+
+      function addEdge(x1, y1, x2, y2, cls) {
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('class', `edge ${cls}`);
+        let d;
+        if (cls === 'step-to-tr') {
+          // Horizontal segment near the source step (AltBegin)
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          if (dx <= 6) {
+            // force exact vertical alignment to avoid crooked look
+            X2 = X1;
+          }
+          d = Math.abs(X2 - X1) > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'source', EDGE_HORIZONTAL_OFFSET)
+            : `M ${X1} ${Y1} L ${X1} ${Y2}`;
+        } else if (cls === 'tr-to-step') {
+          // Horizontal segment near the target step (AltEnd)
+          // Using the target-based offset ensures merging lines align horizontally.
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          if (dx <= 6) {
+            // force exact vertical alignment
+            X2 = X1;
+          }
+          d = Math.abs(X2 - X1) > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'target', EDGE_HORIZONTAL_OFFSET)
+            : `M ${X1} ${Y1} L ${X1} ${Y2}`;
+        } else {
+          // For jump labels and other edges, keep previous behavior
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          d = dx > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'target', 12)
+            : pathCubic(X1, Y1, X2, Y2);
+        }
+        p.setAttribute('d', d);
+        if (cls !== 'step-to-tr') {
+          p.setAttribute('marker-end', 'url(#arrow)');
+        }
+        edgesLayer.appendChild(p);
+      }
+
+      function drawEdges() {
+        const steps = Array.from(diagram.querySelectorAll('.step-card'));
+        const trs = Array.from(diagram.querySelectorAll('.transition-card'));
+
+        // Step -> following transitions
+        steps.forEach(step => {
+          const sr = Number(step.dataset.row || 0);
+          const sc = Number(step.dataset.col || 1);
+          const sx = Number(step.dataset.absX || 0);
+          const sy = Number(step.dataset.absY || 0);
+          const sw = Number(step.dataset.absW || 0);
+          const sh = Number(step.dataset.absH || 0);
+
+          const nextRow = sr + 1;
+          const candidates = trs.filter(t => Number(t.dataset.row || 0) === nextRow);
+          // Only draw edges to transitions that list this step as a direct upstream
+          const targets = candidates.filter(t => {
+            const fromList = (t.dataset.fromSteps || '').split(',').map(s => s.trim()).filter(Boolean);
+            return fromList.includes(String(step.dataset.stepNo));
+          });
+          targets.forEach(t => {
+            const tx = Number(t.dataset.absX || 0);
+            const ty = Number(t.dataset.absY || 0);
+            const tw = Number(t.dataset.absW || 0);
+            const startX = sx + sw / 2;
+            const startY = sy + sh;
+            const endX = tx + tw / 2;
+            const endY = ty;
+            addEdge(startX, startY, endX, endY, 'step-to-tr');
+          });
+        });
+
+        // Transition -> direct target steps (excluding jumps)
+        trs.forEach(tr => {
+          const trX = Number(tr.dataset.absX || 0);
+          const trY = Number(tr.dataset.absY || 0);
+          const trW = Number(tr.dataset.absW || 0);
+          const trH = Number(tr.dataset.absH || 0);
+          const list = (tr.dataset.directToSteps || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!list.length) return;
+          list.forEach(stepNo => {
+            const target = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+            if (!target) return;
+            const sx = Number(target.dataset.absX || 0);
+            const sy = Number(target.dataset.absY || 0);
+            const sw = Number(target.dataset.absW || 0);
+            const startX = trX + trW / 2;
+            const startY = trY + trH;
+            const endX = sx + sw / 2;
+            const endY = sy;
+            addEdge(startX, startY, endX, endY, 'tr-to-step');
+          });
+        });
+
+        // Transition -> jump labels (render as overlay labels; clicking focuses target step)
+        trs.forEach(tr => {
+          const trX = Number(tr.dataset.absX || 0);
+          const trY = Number(tr.dataset.absY || 0);
+          const trW = Number(tr.dataset.absW || 0);
+          const trH = Number(tr.dataset.absH || 0);
+          const raw = tr.dataset.jumps || '';
+          if (!raw) return;
+          let jumps = [];
+          try { jumps = JSON.parse(raw); } catch {}
+          jumps.forEach((j, idx) => {
+            const stepNo = j && j.no != null ? String(j.no) : '';
+            const stepName = (j && j.name) ? String(j.name) : '';
+            if (!stepNo) return;
+            const target = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+            if (!target) return;
+            const startX = trX + trW / 2;
+            const startY = trY + trH;
+
+            // Label position: centered below transition card, stack if multiple
+            const labelText = `S${stepNo}: ${stepName}`;
+            const labelX = trX + trW / 2;
+            const labelY = trY + trH + (10 * 4) + (idx * (18 * 4));
+
+            // Create clickable label (background rect + text)
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'jump-label');
+            const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txt.textContent = labelText;
+            txt.setAttribute('x', String(labelX));
+            txt.setAttribute('y', String(labelY));
+            txt.setAttribute('text-anchor', 'middle');
+
+            // measure text by temporary append
+            labelsLayer.appendChild(txt);
+            const bb = txt.getBBox();
+            labelsLayer.removeChild(txt);
+
+            const paddingX = 6, paddingY = 3;
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'jump-label-bg');
+            rect.setAttribute('x', String(bb.x - paddingX));
+            rect.setAttribute('y', String(bb.y - paddingY));
+            rect.setAttribute('width', String(bb.width + 2 * paddingX));
+            rect.setAttribute('height', String(bb.height + 2 * paddingY));
+
+            // Draw connector ending at the top edge of the label so arrow is visible
+            const endY = (bb.y - paddingY) - 2;
+            addEdge(startX, startY, labelX, endY, 'tr-to-jump');
+
+            // group and interactivity
+            g.appendChild(rect);
+            g.appendChild(txt);
+            g.style.pointerEvents = 'auto';
+            g.addEventListener('click', () => {
+              const targetEl = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+              if (!targetEl) return;
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // flash outline
+              targetEl.style.transition = 'box-shadow 0.2s';
+              const prev = targetEl.style.boxShadow;
+              targetEl.style.boxShadow = '0 0 0 3px #f59e0b inset';
+              setTimeout(() => { targetEl.style.boxShadow = prev; }, 900);
+            });
+            labelsLayer.appendChild(g);
+          });
+        });
+      }
+
+      let rafId = 0;
+      function schedule() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          setOverlaySize();
+          storePositions();
+          clearEdges();
+          drawEdges();
+        });
+      }
+
+      window.addEventListener('resize', schedule);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        schedule();
+      } else {
+        window.addEventListener('DOMContentLoaded', schedule);
+      }
+      // Recompute after fonts settle
+      window.setTimeout(schedule, 300);
+    })();
+  </script>
+</body>
+</html>
+
