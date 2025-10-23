@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Untitled</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #f5f7fa; color: #1f2933; }
+    main { padding: 32px; box-sizing: border-box; }
+    h1 { margin: 0 0 24px; font-size: 24px; font-weight: 600; }
+
+    .diagram { position: relative; overflow: visible; }
+    .diagram-content { display: grid; gap: 20px 16px; align-items: start; padding-bottom: 160px; width: max-content; }
+    .cell { min-height: 8px; display: flex; justify-content: center; }
+
+    .step-card, .transition-card { display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; background: #ffffff; border: 1px solid #d2d6dc; box-shadow: 0 10px 30px rgba(31, 41, 51, 0.08); padding: 14px 16px; min-width: 220px; }
+    .step-card { border-color: #9ac6dd; border-radius: 0; width: 100%; }
+    .transition-card { border: 1px solid #9aa3af; background: #f7f8fa; border-radius: 16px; width: max-content; margin-left: 12px; margin-right: 12px; box-shadow: none; padding: 8px 16px; }
+    .step-card .header, .transition-card .header { display: flex; flex-direction: column; gap: 4px; }
+    .step-card .header { flex-direction: row; justify-content: space-between; align-items: baseline; }
+    .step-card .header .left { font-size: 16px; font-weight: 600; }
+    .step-card .header .right { font-size: 16px; font-weight: 600; text-align: right; }
+    .transition-card .header .primary { font-size: 14px; font-weight: 600; text-align: center; color: #4b5563; }
+    .card-body { margin-top: 4px; border-radius: 10px; padding: 8px 10px; font-family: Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.35; color: #1f2933; }
+    .step-card .card-body { background: #edf6fb; white-space: pre-wrap; }
+    .transition-card .card-body { background: #f2f3f5; white-space: pre; overflow-x: auto; }
+    .transition-stack { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+    .hint { font-size: 12px; color: #6b7280; text-align: center; margin-top: 8px; }
+
+    /* Overlay and edges */
+    .diagram-overlay { position: absolute; left: 0; top: 0; width: auto; height: auto; pointer-events: none; overflow: visible; }
+    .edge { fill: none; stroke-width: 2; opacity: 1; }
+    .edge.step-to-tr { stroke: #9aa3af; }
+    .edge.tr-to-step { stroke: #9aa3af; }
+    .edge.tr-to-jump { stroke: #9aa3af; }
+    .jump-label { font: 12px/1.2 "Segoe UI", Arial, sans-serif; fill: #1f2933; cursor: pointer; }
+    .jump-label-bg { fill: #edf6fb; stroke: #9ac6dd; stroke-width: 1; rx: 4; ry: 4; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Untitled</h1>
+    <div class="diagram">
+      <div class="diagram-content">
+        <div class="cell" style="grid-column: 1; grid-row: 1;"><div class="step-card" id="step-1-r1" data-step-no="1" data-row="1" data-col="1">
+  <div class="header">
+    <div class="left">Wait for start</div>
+    <div class="right">S1</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Sequence.Ready_to_stop
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 2;"><div class="transition-stack">
+<div class="transition-card" id="tr-1-r2-c1" data-tr-no="1" data-row="2" data-col="1" data-from-steps="1" data-direct-to-steps="2" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="201" height="22" viewBox="0 0 201 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Auto_active</text></svg></div>
+  <div class="header">
+    <div class="primary">Auto started (T1)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 3;"><div class="step-card" id="step-2-r3" data-step-no="2" data-row="3" data-col="1">
+  <div class="header">
+    <div class="left">Init outputs</div>
+    <div class="right">S2</div>
+  </div>
+  <div class="card-body">R: &quot;118_Conveyor_DB&quot;.Outputs.Y1_Ejector_out
+R: &quot;118_Conveyor_DB&quot;.Outputs.Y2_Core_stop_up
+R: &quot;118_Conveyor_DB&quot;.Outputs.K1_Forward
+N: &quot;118, Input status_DB&quot;.Input_status.B[4].Wait_on
+N: &quot;118, Input status_DB&quot;.Input_status.B[6].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 4;"><div class="transition-stack">
+<div class="transition-card" id="tr-2-r4-c1" data-tr-no="2" data-row="4" data-col="1" data-from-steps="2" data-direct-to-steps="3" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="384" height="40" viewBox="0 0 384 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B4_Ejector_in_home_pos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B6_Core_stop_in_lower_pos</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">At init position (T2)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 5;"><div class="step-card" id="step-3-r5" data-step-no="3" data-row="5" data-col="1">
+  <div class="header">
+    <div class="left">Move possible cores into core stop</div>
+    <div class="right">S3</div>
+  </div>
+  <div class="card-body">D: &quot;118_Conveyor_DB&quot;.Outputs.K1_Forward, T#1s
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 6;"><div class="transition-stack">
+<div class="transition-card" id="tr-3-r6-c1" data-tr-no="3" data-row="6" data-col="1" data-from-steps="3" data-direct-to-steps="4" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="313" height="22" viewBox="0 0 313 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Move possible cores into core stop.U &gt; t#3S</text></svg></div>
+  <div class="header">
+    <div class="primary">Moving time elapsed (T3)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 7;"><div class="step-card" id="step-4-r7" data-step-no="4" data-row="7" data-col="1">
+  <div class="header">
+    <div class="left">Check for cores</div>
+    <div class="right">S4</div>
+  </div>
+  <div class="card-body">N: #No_action
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-4-r8-c1" data-tr-no="4" data-row="8" data-col="1" data-from-steps="4" data-direct-to-steps="5" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="377" height="94" viewBox="0 0 377 94"><rect x="6" y="7" width="24" height="82" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="52" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B1_Core_at_beginning</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B3_Core_at_end</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_end.Empty</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="88" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_beginning.Empty</text><line x1="30" y1="84" x2="37" y2="84" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">No cores found (T4)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 2; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-9-r8-c2" data-tr-no="9" data-row="8" data-col="2" data-from-steps="4" data-direct-to-steps="9" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="377" height="112" viewBox="0 0 377 112"><rect x="6" y="7" width="24" height="100" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="61" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B1_Core_at_beginning</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B3_Core_at_end</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_end.Has_core</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="88" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_beginning.Empty</text><line x1="30" y1="84" x2="37" y2="84" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="106" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Clearing_station</text><line x1="30" y1="102" x2="37" y2="102" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">One core at stop (T9)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-18-r8-c3" data-tr-no="18" data-row="8" data-col="3" data-from-steps="4" data-direct-to-steps="16" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="385" height="76" viewBox="0 0 385 76"><rect x="6" y="7" width="24" height="64" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="43" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><rect x="42" y="7" width="24" height="46" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="54" y="34" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">≥1</text><text x="78" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B1_Core_at_beginning</text><line x1="66" y1="12" x2="73" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="78" y="34" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="66" y1="30" x2="73" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="78" y="52" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B3_Core_at_end</text><line x1="66" y1="48" x2="73" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Clearing_station</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Waste core found (T18)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-20-r8-c4" data-tr-no="20" data-row="8" data-col="4" data-from-steps="4" data-direct-to-steps="17" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="531" height="94" viewBox="0 0 531 94"><rect x="6" y="7" width="24" height="82" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="52" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_beginning.Has_core</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_end.Has_core</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_beginning.Destination == 136_Stepping_table</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_end.Destination == 136_Stepping_table</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="88" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Clearing_station</text><line x1="30" y1="84" x2="37" y2="84" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Both cores received, destination 136 (T20)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 5; grid-row: 8;"><div class="transition-stack" style="margin-top: 16px;">
+<div class="transition-card" id="tr-26-r8-c5" data-tr-no="26" data-row="8" data-col="5" data-from-steps="4" data-direct-to-steps="22" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="385" height="76" viewBox="0 0 385 76"><rect x="6" y="7" width="24" height="64" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="43" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><rect x="42" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="54" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">≥1</text><text x="78" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B3_Core_at_end</text><line x1="66" y1="12" x2="73" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="78" y="34" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="66" y1="30" x2="73" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><line x1="30" y1="21" x2="37" y2="21" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="52" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Core_info_end.Empty</text><line x1="30" y1="48" x2="37" y2="48" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="70" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Clearing_station</text><line x1="30" y1="66" x2="37" y2="66" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Unknown core found (T26)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 9;"><div class="step-card" id="step-16-r9" data-step-no="16" data-row="9" data-col="3">
+  <div class="header">
+    <div class="left">Mark waste core</div>
+    <div class="right">S16</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Sequence.Mark_waste_core
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 9;"><div class="step-card" id="step-17-r9" data-step-no="17" data-row="9" data-col="4">
+  <div class="header">
+    <div class="left">Ready to deliver to 136</div>
+    <div class="right">S17</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Sequence.Ready_to_stop
+</div>
+</div></div><div class="cell" style="grid-column: 5; grid-row: 9;"><div class="step-card" id="step-22-r9" data-step-no="22" data-row="9" data-col="5">
+  <div class="header">
+    <div class="left">Unknown core alarm</div>
+    <div class="right">S22</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Alarms.Unknown_core_found
+</div>
+</div></div><div class="cell" style="grid-column: 3; grid-row: 10;"><div class="transition-stack">
+<div class="transition-card" id="tr-19-r10-c3" data-tr-no="19" data-row="10" data-col="3" data-from-steps="16" data-direct-to-steps="9" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="201" height="22" viewBox="0 0 201 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Mark waste core.T &gt; t#500MS</text></svg></div>
+  <div class="header">
+    <div class="primary">Set to waste (T19)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 10;"><div class="transition-stack">
+<div class="transition-card" id="tr-21-r10-c4" data-tr-no="21" data-row="10" data-col="4" data-from-steps="17" data-direct-to-steps="18" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="264" height="22" viewBox="0 0 264 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">136_Buffer_table_DB.Ready_to_receive</text></svg></div>
+  <div class="header">
+    <div class="primary">136 ready to receive (T21)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 5; grid-row: 10;"><div class="transition-stack">
+<div class="transition-card" id="tr-27-r10-c5" data-tr-no="27" data-row="10" data-col="5" data-from-steps="22" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 4, &quot;name&quot;: &quot;Check for cores&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="54" height="22" viewBox="0 0 54 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">ACK_EF</text></svg></div>
+  <div class="header">
+    <div class="primary">Wait for acknowledge (T27)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 11;"><div class="step-card" id="step-18-r11" data-step-no="18" data-row="11" data-col="4">
+  <div class="header">
+    <div class="left">Eject core</div>
+    <div class="right">S18</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Outputs.Y1_Ejector_out
+N: &quot;118, Input status_DB&quot;.Input_status.B[4].Wait_off
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 12;"><div class="transition-stack">
+<div class="transition-card" id="tr-22-r12-c4" data-tr-no="22" data-row="12" data-col="4" data-from-steps="18" data-direct-to-steps="19" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="355" height="22" viewBox="0 0 355 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B4_Ejector_in_home_pos</text></svg></div>
+  <div class="header">
+    <div class="primary">Ejector is out (T22)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 13;"><div class="step-card" id="step-19-r13" data-step-no="19" data-row="13" data-col="4">
+  <div class="header">
+    <div class="left">Delivering to 136</div>
+    <div class="right">S19</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Outputs.Y1_Ejector_out
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 14;"><div class="transition-stack">
+<div class="transition-card" id="tr-23-r14-c4" data-tr-no="23" data-row="14" data-col="4" data-from-steps="19" data-direct-to-steps="20" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="279" height="40" viewBox="0 0 279 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Delivering to 136.U &gt; t#2s</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">136_Buffer_table_DB.Core_received</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Ejector time elapsed (T23)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 15;"><div class="step-card" id="step-20-r15" data-step-no="20" data-row="15" data-col="4">
+  <div class="header">
+    <div class="left">Ejector back home</div>
+    <div class="right">S20</div>
+  </div>
+  <div class="card-body">N: &quot;118, Input status_DB&quot;.Input_status.B[4].Wait_on
+N: &quot;118, Input status_DB&quot;.Input_status.B[7].Wait_off
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 16;"><div class="transition-stack">
+<div class="transition-card" id="tr-24-r16-c4" data-tr-no="24" data-row="16" data-col="4" data-from-steps="20" data-direct-to-steps="21" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="377" height="40" viewBox="0 0 377 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B4_Ejector_in_home_pos</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Ejector is back home, no core at stop (T24)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 17;"><div class="step-card" id="step-21-r17" data-step-no="21" data-row="17" data-col="4">
+  <div class="header">
+    <div class="left">Transfer core data to 136</div>
+    <div class="right">S21</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Sequence.Transfer_to_136
+</div>
+</div></div><div class="cell" style="grid-column: 4; grid-row: 18;"><div class="transition-stack">
+<div class="transition-card" id="tr-25-r18-c4" data-tr-no="25" data-row="18" data-col="4" data-from-steps="21" data-direct-to-steps="5" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="299" height="22" viewBox="0 0 299 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Transfer_data_to_136.Done</text></svg></div>
+  <div class="header">
+    <div class="primary">Core data transferred (T25)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 19;"><div class="step-card" id="step-5-r19" data-step-no="5" data-row="19" data-col="1" style="margin-top: 16px;">
+  <div class="header">
+    <div class="left">Wait for previous ready</div>
+    <div class="right">S5</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Sequence.Ready_to_stop
+N: &quot;118_Conveyor_DB&quot;.Sequence.Clearing_done
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 20;"><div class="transition-stack">
+<div class="transition-card" id="tr-5-r20-c1" data-tr-no="5" data-row="20" data-col="1" data-from-steps="5" data-direct-to-steps="6" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="264" height="22" viewBox="0 0 264 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">116_Conveyor_DB.Ready_to_deliver_118</text></svg></div>
+  <div class="header">
+    <div class="primary">Previous ready to deliver (T5)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 21;"><div class="step-card" id="step-6-r21" data-step-no="6" data-row="21" data-col="1">
+  <div class="header">
+    <div class="left">Ready to receive</div>
+    <div class="right">S6</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Outputs.K1_Forward
+N: &quot;118_Conveyor_DB&quot;.Ready_to_receive
+N: &quot;118, Input status_DB&quot;.Input_status.B[4].Wait_on
+N: &quot;118, Input status_DB&quot;.Input_status.B[1].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 22;"><div class="transition-stack">
+<div class="transition-card" id="tr-6-r22-c1" data-tr-no="6" data-row="22" data-col="1" data-from-steps="6" data-direct-to-steps="7" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="313" height="22" viewBox="0 0 313 22"><text x="6" y="16" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B1_Core_at_beginning</text></svg></div>
+  <div class="header">
+    <div class="primary">Core detected (T6)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 23;"><div class="step-card" id="step-7-r23" data-step-no="7" data-row="23" data-col="1">
+  <div class="header">
+    <div class="left">Receiving core</div>
+    <div class="right">S7</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Outputs.K1_Forward
+N: &quot;118_Conveyor_DB&quot;.Core_received
+N: &quot;118, Input status_DB&quot;.Input_status.B[1].Wait_off
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 24;"><div class="transition-stack">
+<div class="transition-card" id="tr-7-r24-c1" data-tr-no="7" data-row="24" data-col="1" data-from-steps="7" data-direct-to-steps="8" data-jumps="">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="377" height="40" viewBox="0 0 377 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Inputs.B1_Core_at_beginning</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">NOT 118_Conveyor_DB.Core_info_beginning.Empty</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Core is received (T7)</div>
+  </div>
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 25;"><div class="step-card" id="step-8-r25" data-step-no="8" data-row="25" data-col="1">
+  <div class="header">
+    <div class="left">Core received</div>
+    <div class="right">S8</div>
+  </div>
+  <div class="card-body">N: &quot;118_Conveyor_DB&quot;.Outputs.K1_Forward
+N: &quot;118, Input status_DB&quot;.Input_status.B[4].Wait_on
+N: &quot;118, Input status_DB&quot;.Input_status.B[7].Wait_on
+</div>
+</div></div><div class="cell" style="grid-column: 1; grid-row: 26;"><div class="transition-stack">
+<div class="transition-card" id="tr-8-r26-c1" data-tr-no="8" data-row="26" data-col="1" data-from-steps="8" data-direct-to-steps="" data-jumps="[{&quot;no&quot;: 4, &quot;name&quot;: &quot;Check for cores&quot;}]">
+  <div class="card-body"><svg xmlns="http://www.w3.org/2000/svg" width="349" height="40" viewBox="0 0 349 40"><rect x="6" y="7" width="24" height="28" rx="0" ry="0" fill="#f0f1f3" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="18" y="25" text-anchor="middle" font-family="Segoe UI, Arial" font-size="12" fill="#374151">&amp;</text><text x="42" y="16" font-family="Consolas, Courier New, monospace" font-size="12">Core received.U &gt; t#2s</text><line x1="30" y1="12" x2="37" y2="12" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /><text x="42" y="34" font-family="Consolas, Courier New, monospace" font-size="12">118_Conveyor_DB.Inputs.B7_Core_at_core_stop</text><line x1="30" y1="30" x2="37" y2="30" stroke="#374151" stroke-width="1" shape-rendering="crispEdges" /></svg></div>
+  <div class="header">
+    <div class="primary">Run time over (T8)</div>
+  </div>
+</div>
+</div></div>
+      </div>
+      <svg class="diagram-overlay" id="diagram-overlay" width="0" height="0" viewBox="0 0 0 0">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa3af"></path>
+          </marker>
+        </defs>
+        <g id="edges-layer"></g>
+        <g id="labels-layer"></g>
+      </svg>
+    </div>
+  </main>
+  <script>
+    (function() {
+      const diagram = document.querySelector('.diagram');
+      const overlay = document.getElementById('diagram-overlay');
+      const edgesLayer = document.getElementById('edges-layer');
+      const labelsLayer = document.getElementById('labels-layer');
+      const content = document.querySelector('.diagram-content');
+
+      // Horizontal offset (in px) from a step when drawing orthogonal edges.
+      // Used for: step->transition (near source step) and transition->step (near target step)
+      const EDGE_HORIZONTAL_OFFSET = 20;
+
+      function setOverlaySize() {
+        if (!diagram || !overlay) return;
+        const w = content ? content.scrollWidth : diagram.scrollWidth;
+        const h = content ? content.scrollHeight : diagram.scrollHeight;
+        overlay.setAttribute('width', String(w));
+        overlay.setAttribute('height', String(h));
+        overlay.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      }
+
+      function relRect(el) {
+        const dRect = diagram.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        // coordinates relative to the diagram (overlay origin)
+        const x = r.left - dRect.left;
+        const y = r.top - dRect.top;
+        return { x, y, w: r.width, h: r.height };
+      }
+
+      function storePositions() {
+        const all = diagram.querySelectorAll('.step-card, .transition-card');
+        all.forEach(el => {
+          const { x, y, w, h } = relRect(el);
+          el.dataset.absX = String(Math.round(x));
+          el.dataset.absY = String(Math.round(y));
+          el.dataset.absW = String(Math.round(w));
+          el.dataset.absH = String(Math.round(h));
+        });
+      }
+
+      function clearEdges() {
+        while (edgesLayer.firstChild) edgesLayer.removeChild(edgesLayer.firstChild);
+        while (labelsLayer.firstChild) labelsLayer.removeChild(labelsLayer.firstChild);
+      }
+
+      function pathCubic(x1, y1, x2, y2) {
+        const X1 = Math.round(x1), Y1 = Math.round(y1);
+        const X2 = Math.round(x2), Y2 = Math.round(y2);
+        const dy = Math.abs(Y2 - Y1);
+        const k = Math.max(20, Math.round(dy * 0.3));
+        const c1x = X1, c1y = Y1 + k;
+        const c2x = X2, c2y = Y2 - k;
+        return `M ${X1} ${Y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${X2} ${Y2}`;
+      }
+
+      function pathOrthogonal(x1, y1, x2, y2, positionMode, offsetPx) {
+        // positionMode: 'source' => horizontal near source step
+        //               'target' => horizontal near target step
+        const X1 = Math.round(x1), Y1 = Math.round(y1);
+        const X2 = Math.round(x2), Y2 = Math.round(y2);
+        const dy = Y2 - Y1;
+        const sign = dy >= 0 ? 1 : -1;
+        const off = Math.max(4, Number(offsetPx || 0));
+        let yMid;
+        if (positionMode === 'source') {
+          yMid = Y1 + sign * off;
+        } else {
+          // default to 'target'
+          yMid = Y2 - sign * off;
+        }
+        const YM = Math.round(yMid);
+        return `M ${X1} ${Y1} L ${X1} ${YM} L ${X2} ${YM} L ${X2} ${Y2}`;
+      }
+
+      function addEdge(x1, y1, x2, y2, cls) {
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('class', `edge ${cls}`);
+        let d;
+        if (cls === 'step-to-tr') {
+          // Horizontal segment near the source step (AltBegin)
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          if (dx <= 6) {
+            // force exact vertical alignment to avoid crooked look
+            X2 = X1;
+          }
+          d = Math.abs(X2 - X1) > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'source', EDGE_HORIZONTAL_OFFSET)
+            : `M ${X1} ${Y1} L ${X1} ${Y2}`;
+        } else if (cls === 'tr-to-step') {
+          // Horizontal segment near the target step (AltEnd)
+          // Using the target-based offset ensures merging lines align horizontally.
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          if (dx <= 6) {
+            // force exact vertical alignment
+            X2 = X1;
+          }
+          d = Math.abs(X2 - X1) > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'target', EDGE_HORIZONTAL_OFFSET)
+            : `M ${X1} ${Y1} L ${X1} ${Y2}`;
+        } else {
+          // For jump labels and other edges, keep previous behavior
+          let X1 = Math.round(x1), Y1 = Math.round(y1);
+          let X2 = Math.round(x2), Y2 = Math.round(y2);
+          const dx = Math.abs(X2 - X1);
+          d = dx > 6
+            ? pathOrthogonal(X1, Y1, X2, Y2, 'target', 12)
+            : pathCubic(X1, Y1, X2, Y2);
+        }
+        p.setAttribute('d', d);
+        if (cls !== 'step-to-tr') {
+          p.setAttribute('marker-end', 'url(#arrow)');
+        }
+        edgesLayer.appendChild(p);
+      }
+
+      function drawEdges() {
+        const steps = Array.from(diagram.querySelectorAll('.step-card'));
+        const trs = Array.from(diagram.querySelectorAll('.transition-card'));
+
+        // Step -> following transitions
+        steps.forEach(step => {
+          const sr = Number(step.dataset.row || 0);
+          const sc = Number(step.dataset.col || 1);
+          const sx = Number(step.dataset.absX || 0);
+          const sy = Number(step.dataset.absY || 0);
+          const sw = Number(step.dataset.absW || 0);
+          const sh = Number(step.dataset.absH || 0);
+
+          const nextRow = sr + 1;
+          const candidates = trs.filter(t => Number(t.dataset.row || 0) === nextRow);
+          // Only draw edges to transitions that list this step as a direct upstream
+          const targets = candidates.filter(t => {
+            const fromList = (t.dataset.fromSteps || '').split(',').map(s => s.trim()).filter(Boolean);
+            return fromList.includes(String(step.dataset.stepNo));
+          });
+          targets.forEach(t => {
+            const tx = Number(t.dataset.absX || 0);
+            const ty = Number(t.dataset.absY || 0);
+            const tw = Number(t.dataset.absW || 0);
+            const startX = sx + sw / 2;
+            const startY = sy + sh;
+            const endX = tx + tw / 2;
+            const endY = ty;
+            addEdge(startX, startY, endX, endY, 'step-to-tr');
+          });
+        });
+
+        // Transition -> direct target steps (excluding jumps)
+        trs.forEach(tr => {
+          const trX = Number(tr.dataset.absX || 0);
+          const trY = Number(tr.dataset.absY || 0);
+          const trW = Number(tr.dataset.absW || 0);
+          const trH = Number(tr.dataset.absH || 0);
+          const list = (tr.dataset.directToSteps || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!list.length) return;
+          list.forEach(stepNo => {
+            const target = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+            if (!target) return;
+            const sx = Number(target.dataset.absX || 0);
+            const sy = Number(target.dataset.absY || 0);
+            const sw = Number(target.dataset.absW || 0);
+            const startX = trX + trW / 2;
+            const startY = trY + trH;
+            const endX = sx + sw / 2;
+            const endY = sy;
+            addEdge(startX, startY, endX, endY, 'tr-to-step');
+          });
+        });
+
+        // Transition -> jump labels (render as overlay labels; clicking focuses target step)
+        trs.forEach(tr => {
+          const trX = Number(tr.dataset.absX || 0);
+          const trY = Number(tr.dataset.absY || 0);
+          const trW = Number(tr.dataset.absW || 0);
+          const trH = Number(tr.dataset.absH || 0);
+          const raw = tr.dataset.jumps || '';
+          if (!raw) return;
+          let jumps = [];
+          try { jumps = JSON.parse(raw); } catch {}
+          jumps.forEach((j, idx) => {
+            const stepNo = j && j.no != null ? String(j.no) : '';
+            const stepName = (j && j.name) ? String(j.name) : '';
+            if (!stepNo) return;
+            const target = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+            if (!target) return;
+            const startX = trX + trW / 2;
+            const startY = trY + trH;
+
+            // Label position: centered below transition card, stack if multiple
+            const labelText = `S${stepNo}: ${stepName}`;
+            const labelX = trX + trW / 2;
+            const labelY = trY + trH + (10 * 4) + (idx * (18 * 4));
+
+            // Create clickable label (background rect + text)
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', 'jump-label');
+            const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txt.textContent = labelText;
+            txt.setAttribute('x', String(labelX));
+            txt.setAttribute('y', String(labelY));
+            txt.setAttribute('text-anchor', 'middle');
+
+            // measure text by temporary append
+            labelsLayer.appendChild(txt);
+            const bb = txt.getBBox();
+            labelsLayer.removeChild(txt);
+
+            const paddingX = 6, paddingY = 3;
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('class', 'jump-label-bg');
+            rect.setAttribute('x', String(bb.x - paddingX));
+            rect.setAttribute('y', String(bb.y - paddingY));
+            rect.setAttribute('width', String(bb.width + 2 * paddingX));
+            rect.setAttribute('height', String(bb.height + 2 * paddingY));
+
+            // Draw connector ending at the top edge of the label so arrow is visible
+            const endY = (bb.y - paddingY) - 2;
+            addEdge(startX, startY, labelX, endY, 'tr-to-jump');
+
+            // group and interactivity
+            g.appendChild(rect);
+            g.appendChild(txt);
+            g.style.pointerEvents = 'auto';
+            g.addEventListener('click', () => {
+              const targetEl = diagram.querySelector(`.step-card[data-step-no="${stepNo}"]`);
+              if (!targetEl) return;
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // flash outline
+              targetEl.style.transition = 'box-shadow 0.2s';
+              const prev = targetEl.style.boxShadow;
+              targetEl.style.boxShadow = '0 0 0 3px #f59e0b inset';
+              setTimeout(() => { targetEl.style.boxShadow = prev; }, 900);
+            });
+            labelsLayer.appendChild(g);
+          });
+        });
+      }
+
+      let rafId = 0;
+      function schedule() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          setOverlaySize();
+          storePositions();
+          clearEdges();
+          drawEdges();
+        });
+      }
+
+      window.addEventListener('resize', schedule);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        schedule();
+      } else {
+        window.addEventListener('DOMContentLoaded', schedule);
+      }
+      // Recompute after fonts settle
+      window.setTimeout(schedule, 300);
+    })();
+  </script>
+</body>
+</html>
+
