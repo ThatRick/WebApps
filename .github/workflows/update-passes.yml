@@ -6,10 +6,11 @@ on:
   # Aja automaattisesti 6 tunnin välein
   schedule:
     - cron: '0 */6 * * *'
-  # Aja kun main-haaraan pusketaan
+  # Aja kun main-haaraan tai claude/*-haaraan pusketaan
   push:
     branches:
       - main
+      - 'claude/**'
     paths:
       - 'starlink/**'
       - '.github/workflows/update-passes.yml'
