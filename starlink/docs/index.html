@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlink Ylilentolaskuri</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a2e;
+            --text-primary: #e8e8f0;
+            --text-secondary: #a0a0b0;
+            --accent: #00d4ff;
+            --accent-dim: #0099bb;
+            --success: #00ff88;
+            --warning: #ffaa00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            border-bottom: 1px solid var(--accent-dim);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .info-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .next-pass {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0, 212, 255, 0.1) 100%);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .next-pass h2 {
+            color: var(--success);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .next-pass .satellite-name {
+            font-size: 1.8rem;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .next-pass .time {
+            font-size: 2rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .countdown {
+            font-size: 1.2rem;
+            color: var(--warning);
+            margin-top: 10px;
+        }
+
+        .passes-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .passes-table th,
+        .passes-table td {
+            padding: 15px 20px;
+            text-align: left;
+        }
+
+        .passes-table th {
+            background: var(--bg-card);
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .passes-table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+        }
+
+        .passes-table tbody tr:hover {
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .satellite-name-cell {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .elevation-high {
+            color: var(--success);
+        }
+
+        .elevation-medium {
+            color: var(--warning);
+        }
+
+        .elevation-low {
+            color: var(--text-secondary);
+        }
+
+        .time-cell {
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--bg-card);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff4444;
+            color: #ff6666;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .passes-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .info-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .next-pass .time {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Starlink Ylilentolaskuri</h1>
+        <p class="subtitle">Seuraa Starlink-satelliittien ylilentoja reaaliajassa</p>
+    </header>
+
+    <div class="container">
+        <div id="info-bar" class="info-bar">
+            <div class="info-item">
+                <span class="info-label">Sijainti:</span>
+                <span class="info-value" id="location">Ladataan...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Maksimietäisyys:</span>
+                <span class="info-value" id="max-distance">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Päivitetty:</span>
+                <span class="info-value" id="updated">-</span>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Ladataan ylilentotietoja...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-passes">0</div>
+                    <div class="stat-label">Ylilentoa yhteensä</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="next-hours">24</div>
+                    <div class="stat-label">Tunnin aikana</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avg-elevation">0°</div>
+                    <div class="stat-label">Keskimääräinen elevaatio</div>
+                </div>
+            </div>
+
+            <div id="next-pass" class="next-pass">
+                <h2>Seuraava ylilento</h2>
+                <div class="satellite-name" id="next-satellite">-</div>
+                <div class="time" id="next-time">-</div>
+                <div class="countdown" id="countdown">-</div>
+            </div>
+
+            <h2 style="margin-bottom: 20px; color: var(--text-secondary);">Tulevat ylilennot</h2>
+
+            <table class="passes-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Satelliitti</th>
+                        <th>Alkaa</th>
+                        <th>Huippu</th>
+                        <th>Päättyy</th>
+                        <th>Elevaatio</th>
+                        <th>Etäisyys</th>
+                        <th>Kesto</th>
+                    </tr>
+                </thead>
+                <tbody id="passes-body">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            <p>Ylilentotietojen lataus epäonnistui. Yritä päivittää sivu.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>Data: <a href="https://celestrak.org/" target="_blank">Celestrak</a> TLE |
+           Lähdekoodi: <a href="https://github.com/ThatRick/Claude_work" target="_blank">GitHub</a></p>
+        <p style="margin-top: 10px;">Aikavyöhyke: UTC+2 (Suomen talviaika)</p>
+    </footer>
+
+    <script>
+        let passesData = null;
+        let countdownInterval = null;
+
+        async function loadPasses() {
+            try {
+                const response = await fetch('passes.json');
+                if (!response.ok) throw new Error('Failed to load');
+                passesData = await response.json();
+                displayData();
+            } catch (error) {
+                console.error('Error loading passes:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
+        function displayData() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            // Info bar
+            const obs = passesData.observer;
+            document.getElementById('location').textContent =
+                `${obs.location_name} (${obs.latitude.toFixed(4)}°N, ${obs.longitude.toFixed(4)}°E)`;
+            document.getElementById('max-distance').textContent =
+                `${passesData.parameters.max_distance_km} km`;
+
+            const genDate = new Date(passesData.generated_at);
+            document.getElementById('updated').textContent =
+                genDate.toLocaleString('fi-FI');
+
+            // Stats
+            document.getElementById('total-passes').textContent = passesData.total_passes;
+            document.getElementById('next-hours').textContent = passesData.parameters.hours_ahead;
+
+            if (passesData.passes.length > 0) {
+                const avgElev = passesData.passes.reduce((sum, p) => sum + p.max_elevation, 0) / passesData.passes.length;
+                document.getElementById('avg-elevation').textContent = `${avgElev.toFixed(1)}°`;
+            }
+
+            // Next pass
+            const now = new Date();
+            const futurePasses = passesData.passes.filter(p => new Date(p.start_time_utc) > now);
+
+            if (futurePasses.length > 0) {
+                const next = futurePasses[0];
+                document.getElementById('next-satellite').textContent = next.satellite;
+                document.getElementById('next-time').textContent =
+                    formatTime(next.start_time_local);
+                startCountdown(new Date(next.start_time_utc));
+            } else {
+                document.getElementById('next-satellite').textContent = 'Ei tulevia ylilentoja';
+                document.getElementById('next-time').textContent = '-';
+                document.getElementById('countdown').textContent = '';
+            }
+
+            // Table
+            const tbody = document.getElementById('passes-body');
+            tbody.innerHTML = '';
+
+            passesData.passes.forEach((pass, index) => {
+                const row = document.createElement('tr');
+                const startTime = new Date(pass.start_time_utc);
+                const isPast = startTime < now;
+
+                if (isPast) {
+                    row.style.opacity = '0.5';
+                }
+
+                const elevClass = pass.max_elevation >= 60 ? 'elevation-high' :
+                                  pass.max_elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="satellite-name-cell">${pass.satellite}</td>
+                    <td class="time-cell">${formatTime(pass.start_time_local)}</td>
+                    <td class="time-cell">${formatTimeOnly(pass.max_elevation_time_local)}</td>
+                    <td class="time-cell">${formatTimeOnly(pass.end_time_local)}</td>
+                    <td class="${elevClass}">${pass.max_elevation}°</td>
+                    <td>${pass.min_distance_km} km</td>
+                    <td>${pass.duration_minutes} min</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('fi-FI', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function formatTimeOnly(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('fi-FI', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function startCountdown(targetDate) {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            function update() {
+                const now = new Date();
+                const diff = targetDate - now;
+
+                if (diff <= 0) {
+                    document.getElementById('countdown').textContent = 'NYT!';
+                    clearInterval(countdownInterval);
+                    setTimeout(loadPasses, 60000); // Reload after pass
+                    return;
+                }
+
+                const hours = Math.floor(diff / 3600000);
+                const minutes = Math.floor((diff % 3600000) / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+
+                document.getElementById('countdown').textContent =
+                    `${hours}h ${minutes}min ${seconds}s`;
+            }
+
+            update();
+            countdownInterval = setInterval(update, 1000);
+        }
+
+        // Load data on page load
+        loadPasses();
+
+        // Refresh every 10 minutes
+        setInterval(loadPasses, 600000);
+    </script>
+</body>
+</html>
