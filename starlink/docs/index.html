@@ -352,6 +352,7 @@
                 <h2>Seuraava ylilento</h2>
                 <div class="satellite-name" id="next-satellite">-</div>
                 <div class="time" id="next-time">-</div>
+                <div id="next-direction" style="font-size: 1.1rem; color: var(--text-secondary); margin-top: 8px;"></div>
                 <div class="countdown" id="countdown">-</div>
                 <div class="visibility-badge" id="next-visibility" style="display: none;"></div>
             </div>
@@ -364,6 +365,7 @@
                         <th>#</th>
                         <th>Satelliitti</th>
                         <th>Alkaa</th>
+                        <th>Suunta</th>
                         <th>Huippu</th>
                         <th>Päättyy</th>
                         <th>Elevaatio</th>
@@ -442,6 +444,13 @@
                 document.getElementById('next-satellite').textContent = next.satellite;
                 document.getElementById('next-time').textContent =
                     formatTime(next.start_time_local);
+
+                // Show direction
+                const directionEl = document.getElementById('next-direction');
+                if (next.start_direction && next.start_azimuth !== undefined) {
+                    directionEl.textContent = `Suunta: ${next.start_direction} (${next.start_azimuth}°)`;
+                }
+
                 startCountdown(new Date(next.start_time_utc));
 
                 // Show visibility for next pass
@@ -458,6 +467,7 @@
             } else {
                 document.getElementById('next-satellite').textContent = 'Ei tulevia ylilentoja';
                 document.getElementById('next-time').textContent = '-';
+                document.getElementById('next-direction').textContent = '';
                 document.getElementById('countdown').textContent = '';
                 document.getElementById('next-visibility').style.display = 'none';
             }
@@ -485,10 +495,14 @@
                                        visibilityCategory === 'good' ? '◐' :
                                        visibilityCategory === 'fair' ? '◔' : '○';
 
+                const direction = pass.start_direction || 'N';
+                const azimuth = pass.start_azimuth || 0;
+
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td class="satellite-name-cell">${pass.satellite}</td>
                     <td class="time-cell">${formatTime(pass.start_time_local)}</td>
+                    <td><strong>${direction}</strong> ${azimuth}°</td>
                     <td class="time-cell">${formatTimeOnly(pass.max_elevation_time_local)}</td>
                     <td class="time-cell">${formatTimeOnly(pass.end_time_local)}</td>
                     <td class="${elevClass}">${pass.max_elevation}°</td>

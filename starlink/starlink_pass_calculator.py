@@ -287,6 +287,34 @@ def calculate_elevation(sat_lat: float, sat_lon: float, sat_alt: float,
     return elevation
 
 
+def calculate_azimuth(sat_lat: float, sat_lon: float, obs_lat: float, obs_lon: float) -> float:
+    """
+    Laske satelliitin atsimuutti (suuntakulma) havaitsijan näkökulmasta.
+    Palauttaa kulman asteina (0° = pohjoinen, 90° = itä, 180° = etelä, 270° = länsi).
+    """
+    obs_lat_rad = deg_to_rad(obs_lat)
+    sat_lat_rad = deg_to_rad(sat_lat)
+    dlon_rad = deg_to_rad(sat_lon - obs_lon)
+
+    y = math.sin(dlon_rad) * math.cos(sat_lat_rad)
+    x = math.cos(obs_lat_rad) * math.sin(sat_lat_rad) - \
+        math.sin(obs_lat_rad) * math.cos(sat_lat_rad) * math.cos(dlon_rad)
+
+    azimuth_rad = math.atan2(y, x)
+    azimuth = (rad_to_deg(azimuth_rad) + 360) % 360
+
+    return azimuth
+
+
+def azimuth_to_direction(azimuth: float) -> str:
+    """
+    Muunna atsimuutti (asteet) ilmansuunnaksi.
+    """
+    directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    index = int((azimuth + 22.5) / 45) % 8
+    return directions[index]
+
+
 def calculate_solar_position(dt: datetime, lat: float, lon: float) -> Tuple[float, float]:
     """
     Laske auringon sijainti (elevaatio ja atsimuutti) annetulle paikalle ja ajalle.
@@ -472,7 +500,10 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                     )
 
                     if not in_pass:
-                        # Ylilento alkaa
+                        # Ylilento alkaa - laske atsimuutti (suuntakulma)
+                        azimuth = calculate_azimuth(sat_lat, sat_lon, observer_lat, observer_lon)
+                        direction = azimuth_to_direction(azimuth)
+
                         in_pass = True
                         pass_data = {
                             'satellite': name,
@@ -483,6 +514,8 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                             'max_visibility_rating': visibility_rating,
                             'max_visibility_category': visibility_category,
                             'max_visibility_time': current_time,
+                            'start_azimuth': azimuth,
+                            'start_direction': direction,
                             'positions': [(current_time, sat_lat, sat_lon, sat_alt, elevation)]
                         }
                     else:
@@ -548,7 +581,9 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'duration_seconds': p['duration'],
             'duration_minutes': round(p['duration'] / 60, 1),
             'visibility_rating': p.get('max_visibility_rating', 0),
-            'visibility_category': p.get('max_visibility_category', 'Unknown')
+            'visibility_category': p.get('max_visibility_category', 'Unknown'),
+            'start_azimuth': round(p.get('start_azimuth', 0), 1),
+            'start_direction': p.get('start_direction', 'N')
         })
 
     return {
@@ -581,10 +616,13 @@ def format_pass(pass_info: dict, local_tz_offset: int = 2) -> str:
 
     visibility_rating = pass_info.get('max_visibility_rating', 0)
     visibility_category = pass_info.get('max_visibility_category', 'Unknown')
+    azimuth = pass_info.get('start_azimuth', 0)
+    direction = pass_info.get('start_direction', 'N')
 
     return (
         f"  {pass_info['satellite']}\n"
         f"    Alkaa:     {start_local.strftime('%Y-%m-%d %H:%M:%S')} (UTC+{local_tz_offset})\n"
+        f"    Suunta:    {direction} ({azimuth:.1f}°)\n"
         f"    Huippu:    {max_elev_local.strftime('%H:%M:%S')} - elevaatio {pass_info['max_elevation']:.1f}°\n"
         f"    Päättyy:   {end_local.strftime('%H:%M:%S')}\n"
         f"    Kesto:     {duration_min:.1f} min\n"
