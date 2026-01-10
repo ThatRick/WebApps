@@ -152,6 +152,15 @@
             margin-top: 10px;
         }
 
+        .visibility-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
         .passes-table {
             width: 100%;
             border-collapse: collapse;
@@ -199,6 +208,25 @@
 
         .elevation-low {
             color: var(--text-secondary);
+        }
+
+        .visibility-excellent {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .visibility-good {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .visibility-fair {
+            color: #ffaa00;
+        }
+
+        .visibility-poor {
+            color: var(--text-secondary);
+            opacity: 0.7;
         }
 
         .time-cell {
@@ -314,6 +342,10 @@
                     <div class="stat-value" id="avg-elevation">0°</div>
                     <div class="stat-label">Keskimääräinen elevaatio</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-value visibility-excellent" id="excellent-passes">0</div>
+                    <div class="stat-label">Erinomainen näkyvyys</div>
+                </div>
             </div>
 
             <div id="next-pass" class="next-pass">
@@ -321,6 +353,7 @@
                 <div class="satellite-name" id="next-satellite">-</div>
                 <div class="time" id="next-time">-</div>
                 <div class="countdown" id="countdown">-</div>
+                <div class="visibility-badge" id="next-visibility" style="display: none;"></div>
             </div>
 
             <h2 style="margin-bottom: 20px; color: var(--text-secondary);">Tulevat ylilennot</h2>
@@ -336,6 +369,7 @@
                         <th>Elevaatio</th>
                         <th>Etäisyys</th>
                         <th>Kesto</th>
+                        <th>Näkyvyys</th>
                     </tr>
                 </thead>
                 <tbody id="passes-body">
@@ -393,6 +427,10 @@
             if (passesData.passes.length > 0) {
                 const avgElev = passesData.passes.reduce((sum, p) => sum + p.max_elevation, 0) / passesData.passes.length;
                 document.getElementById('avg-elevation').textContent = `${avgElev.toFixed(1)}°`;
+
+                // Count excellent visibility passes
+                const excellentCount = passesData.passes.filter(p => p.visibility_category === 'Excellent').length;
+                document.getElementById('excellent-passes').textContent = excellentCount;
             }
 
             // Next pass
@@ -405,10 +443,23 @@
                 document.getElementById('next-time').textContent =
                     formatTime(next.start_time_local);
                 startCountdown(new Date(next.start_time_utc));
+
+                // Show visibility for next pass
+                const visibilityBadge = document.getElementById('next-visibility');
+                if (next.visibility_category) {
+                    const category = next.visibility_category.toLowerCase();
+                    visibilityBadge.className = 'visibility-badge visibility-' + category;
+                    const emoji = category === 'excellent' ? '★' :
+                                 category === 'good' ? '◐' :
+                                 category === 'fair' ? '◔' : '○';
+                    visibilityBadge.textContent = `${emoji} Näkyvyys: ${next.visibility_category}`;
+                    visibilityBadge.style.display = 'inline-block';
+                }
             } else {
                 document.getElementById('next-satellite').textContent = 'Ei tulevia ylilentoja';
                 document.getElementById('next-time').textContent = '-';
                 document.getElementById('countdown').textContent = '';
+                document.getElementById('next-visibility').style.display = 'none';
             }
 
             // Table
@@ -427,6 +478,13 @@
                 const elevClass = pass.max_elevation >= 60 ? 'elevation-high' :
                                   pass.max_elevation >= 30 ? 'elevation-medium' : 'elevation-low';
 
+                const visibilityCategory = (pass.visibility_category || 'Unknown').toLowerCase();
+                const visibilityClass = `visibility-${visibilityCategory}`;
+                const visibilityRating = pass.visibility_rating || 0;
+                const visibilityEmoji = visibilityCategory === 'excellent' ? '★' :
+                                       visibilityCategory === 'good' ? '◐' :
+                                       visibilityCategory === 'fair' ? '◔' : '○';
+
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td class="satellite-name-cell">${pass.satellite}</td>
@@ -436,6 +494,7 @@
                     <td class="${elevClass}">${pass.max_elevation}°</td>
                     <td>${pass.min_distance_km} km</td>
                     <td>${pass.duration_minutes} min</td>
+                    <td class="${visibilityClass}">${visibilityEmoji} ${pass.visibility_category || 'N/A'}</td>
                 `;
                 tbody.appendChild(row);
             });

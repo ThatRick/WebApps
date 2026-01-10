@@ -287,6 +287,131 @@ def calculate_elevation(sat_lat: float, sat_lon: float, sat_alt: float,
     return elevation
 
 
+def calculate_solar_position(dt: datetime, lat: float, lon: float) -> Tuple[float, float]:
+    """
+    Laske auringon sijainti (elevaatio ja atsimuutti) annetulle paikalle ja ajalle.
+    Palauttaa (elevation, azimuth) asteina.
+    """
+    # Julian Date
+    jd = julian_date(dt)
+
+    # Julian vuosisatoja J2000.0:sta
+    n = jd - 2451545.0
+
+    # Keskimääräinen auringon pituusaste
+    L = (280.460 + 0.9856474 * n) % 360
+
+    # Keskimääräinen anomalia
+    g = deg_to_rad((357.528 + 0.9856003 * n) % 360)
+
+    # Ekliptikaaliset koordinaatit
+    lambda_sun = L + 1.915 * math.sin(g) + 0.020 * math.sin(2 * g)
+
+    # Kallistus
+    epsilon = deg_to_rad(23.439 - 0.0000004 * n)
+
+    # Oikea ylösnousu ja deklinaatio
+    lambda_rad = deg_to_rad(lambda_sun)
+    alpha = rad_to_deg(math.atan2(math.cos(epsilon) * math.sin(lambda_rad), math.cos(lambda_rad)))
+    delta = rad_to_deg(math.asin(math.sin(epsilon) * math.sin(lambda_rad)))
+
+    # Paikallinen tuntikulma
+    gmst_deg = rad_to_deg(gmst(jd)) % 360
+    lha = (gmst_deg + lon - alpha) % 360
+
+    # Muunna horisonttikoordinaateiksi
+    lat_rad = deg_to_rad(lat)
+    delta_rad = deg_to_rad(delta)
+    lha_rad = deg_to_rad(lha)
+
+    # Elevaatio
+    sin_alt = math.sin(lat_rad) * math.sin(delta_rad) + \
+              math.cos(lat_rad) * math.cos(delta_rad) * math.cos(lha_rad)
+    elevation = rad_to_deg(math.asin(sin_alt))
+
+    # Atsimuutti
+    cos_az = (math.sin(delta_rad) - math.sin(lat_rad) * sin_alt) / \
+             (math.cos(lat_rad) * math.cos(math.asin(sin_alt)))
+    cos_az = max(-1, min(1, cos_az))  # Varmista että on välillä [-1, 1]
+    azimuth = rad_to_deg(math.acos(cos_az))
+
+    if math.sin(lha_rad) > 0:
+        azimuth = 360 - azimuth
+
+    return elevation, azimuth
+
+
+def is_satellite_illuminated(sat_alt: float, sun_elevation: float) -> bool:
+    """
+    Määritä onko satelliitti auringon valossa.
+    Satelliitti on valaistu jos se on tarpeeksi korkealla näkemään auringon.
+    """
+    # Laske auringon geometrinen korkeus satelliitin sijainnissa
+    # Yksinkertaistettu: jos satelliitti on korkealla ja aurinko ei ole liian syvällä
+    earth_shadow_angle = -math.degrees(math.asin(EARTH_RADIUS_KM / (EARTH_RADIUS_KM + sat_alt)))
+
+    # Satelliitti on valaistu jos aurinko on korkeammalla kuin varjon kulma
+    return sun_elevation > earth_shadow_angle
+
+
+def calculate_visibility_rating(sun_elevation: float, sat_illuminated: bool,
+                                sat_elevation: float) -> Tuple[int, str]:
+    """
+    Laske näkyvyysluokitus (0-100) ja kategoria.
+
+    Parhaat katseluolosuhteet:
+    - Havaitsija on pimeässä (aurinko horisontin alapuolella)
+    - Satelliitti on auringon valossa
+    - Satelliitti on korkealla taivaalla
+
+    Palauttaa (rating, category) missä:
+    - rating: 0-100 (100 = paras)
+    - category: "Excellent", "Good", "Fair", "Poor"
+    """
+    if not sat_illuminated:
+        # Satelliitti ei ole valaistu - huono näkyvyys
+        return 0, "Poor"
+
+    # Perusluokitus auringon korkeuden perusteella
+    if sun_elevation > 0:
+        # Päivänvalo - ei näkyvissä
+        return 0, "Poor"
+    elif sun_elevation > -6:
+        # Siviilihämärä - heikko näkyvyys
+        base_rating = 30
+        category = "Fair"
+    elif sun_elevation > -12:
+        # Merihämärä - hyvä näkyvyys
+        base_rating = 60
+        category = "Good"
+    elif sun_elevation > -18:
+        # Tähtihämärä - erinomainen näkyvyys
+        base_rating = 85
+        category = "Excellent"
+    else:
+        # Täysi pimeä - paras näkyvyys
+        base_rating = 95
+        category = "Excellent"
+
+    # Lisäbonus satelliitin korkeuden perusteella
+    # Korkeammalla olevat satelliitit ovat kirkkaampia
+    elevation_bonus = min(sat_elevation / 90.0 * 5, 5)  # Max 5 pistettä
+
+    rating = min(int(base_rating + elevation_bonus), 100)
+
+    # Päivitä kategoria lopullisen rating:in mukaan
+    if rating >= 80:
+        category = "Excellent"
+    elif rating >= 60:
+        category = "Good"
+    elif rating >= 30:
+        category = "Fair"
+    else:
+        category = "Poor"
+
+    return rating, category
+
+
 def find_passes(satellites: List[Tuple[str, str, str]],
                 observer_lat: float,
                 observer_lon: float,
@@ -339,6 +464,13 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                                                observer_lat, observer_lon)
 
                 if distance <= max_distance_km and elevation > 0:
+                    # Laske näkyvyys
+                    sun_elev, _ = calculate_solar_position(current_time, observer_lat, observer_lon)
+                    sat_illuminated = is_satellite_illuminated(sat_alt, sun_elev)
+                    visibility_rating, visibility_category = calculate_visibility_rating(
+                        sun_elev, sat_illuminated, elevation
+                    )
+
                     if not in_pass:
                         # Ylilento alkaa
                         in_pass = True
@@ -348,6 +480,9 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                             'max_elevation_time': current_time,
                             'max_elevation': elevation,
                             'min_distance': distance,
+                            'max_visibility_rating': visibility_rating,
+                            'max_visibility_category': visibility_category,
+                            'max_visibility_time': current_time,
                             'positions': [(current_time, sat_lat, sat_lon, sat_alt, elevation)]
                         }
                     else:
@@ -358,6 +493,10 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                             pass_data['max_elevation_time'] = current_time
                         if distance < pass_data['min_distance']:
                             pass_data['min_distance'] = distance
+                        if visibility_rating > pass_data['max_visibility_rating']:
+                            pass_data['max_visibility_rating'] = visibility_rating
+                            pass_data['max_visibility_category'] = visibility_category
+                            pass_data['max_visibility_time'] = current_time
                 else:
                     if in_pass:
                         # Ylilento päättyy
@@ -407,7 +546,9 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'max_elevation': round(p['max_elevation'], 1),
             'min_distance_km': round(p['min_distance'], 0),
             'duration_seconds': p['duration'],
-            'duration_minutes': round(p['duration'] / 60, 1)
+            'duration_minutes': round(p['duration'] / 60, 1),
+            'visibility_rating': p.get('max_visibility_rating', 0),
+            'visibility_category': p.get('max_visibility_category', 'Unknown')
         })
 
     return {
@@ -438,6 +579,9 @@ def format_pass(pass_info: dict, local_tz_offset: int = 2) -> str:
 
     duration_min = pass_info['duration'] / 60
 
+    visibility_rating = pass_info.get('max_visibility_rating', 0)
+    visibility_category = pass_info.get('max_visibility_category', 'Unknown')
+
     return (
         f"  {pass_info['satellite']}\n"
         f"    Alkaa:     {start_local.strftime('%Y-%m-%d %H:%M:%S')} (UTC+{local_tz_offset})\n"
@@ -445,6 +589,7 @@ def format_pass(pass_info: dict, local_tz_offset: int = 2) -> str:
         f"    Päättyy:   {end_local.strftime('%H:%M:%S')}\n"
         f"    Kesto:     {duration_min:.1f} min\n"
         f"    Lähin:     {pass_info['min_distance']:.0f} km\n"
+        f"    Näkyvyys:  {visibility_category} ({visibility_rating}/100)\n"
     )
 
 
