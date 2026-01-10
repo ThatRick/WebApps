@@ -1,0 +1,73 @@
+name: Update Starlink Passes and Deploy
+
+on:
+  # Aja manuaalisesti
+  workflow_dispatch:
+  # Aja automaattisesti 6 tunnin välein
+  schedule:
+    - cron: '0 */6 * * *'
+  # Aja kun main-haaraan pusketaan
+  push:
+    branches:
+      - main
+    paths:
+      - 'starlink/**'
+      - '.github/workflows/update-passes.yml'
+
+# Salli vain yksi samanaikainen deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Update Starlink pass data
+        run: |
+          echo "Calculating Starlink passes for Jyväskylä, Finland..."
+          cd starlink
+          python starlink_pass_calculator.py \
+            --lat 62.2426 \
+            --lon 25.7473 \
+            --max-distance 500 \
+            --hours 24 \
+            --tz 2 \
+            --no-cache \
+            --json docs/passes.json \
+            --top 5
+
+      - name: Verify JSON was created
+        run: |
+          if [ -f starlink/docs/passes.json ]; then
+            echo "passes.json created successfully"
+            echo "Total passes: $(cat starlink/docs/passes.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_passes"])')"
+          else
+            echo "ERROR: passes.json not created"
+            exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
