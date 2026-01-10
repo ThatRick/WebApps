@@ -88,15 +88,15 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
             margin-bottom: 30px;
         }
 
         .stat-card {
             background: var(--bg-card);
-            padding: 25px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 10px;
             text-align: center;
             border: 1px solid rgba(0, 212, 255, 0.2);
             transition: transform 0.2s, border-color 0.2s;
@@ -108,14 +108,15 @@
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: 700;
             color: var(--accent);
         }
 
         .stat-label {
             color: var(--text-secondary);
-            margin-top: 5px;
+            margin-top: 3px;
+            font-size: 0.85rem;
         }
 
         .next-pass {
@@ -329,32 +330,29 @@
         </div>
 
         <div id="content" style="display: none;">
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-value" id="total-passes">0</div>
-                    <div class="stat-label">Ylilentoa yhteensä</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="next-hours">24</div>
-                    <div class="stat-label">Tunnin aikana</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="avg-elevation">0°</div>
-                    <div class="stat-label">Keskimääräinen elevaatio</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value visibility-excellent" id="excellent-passes">0</div>
-                    <div class="stat-label">Erinomainen näkyvyys</div>
-                </div>
-            </div>
-
             <div id="next-pass" class="next-pass">
                 <h2>Seuraava ylilento</h2>
                 <div class="satellite-name" id="next-satellite">-</div>
                 <div class="time" id="next-time">-</div>
-                <div id="next-direction" style="font-size: 1.1rem; color: var(--text-secondary); margin-top: 8px;"></div>
+                <div id="next-appear" style="font-size: 1rem; color: var(--text-secondary); margin-top: 8px;"></div>
+                <div id="next-movement" style="font-size: 1rem; color: var(--text-secondary);"></div>
                 <div class="countdown" id="countdown">-</div>
                 <div class="visibility-badge" id="next-visibility" style="display: none;"></div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-passes">0</div>
+                    <div class="stat-label">Ylilentoa</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value visibility-excellent" id="excellent-passes">0</div>
+                    <div class="stat-label">Erinomaista</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avg-elevation">0°</div>
+                    <div class="stat-label">Keskim. elevaatio</div>
+                </div>
             </div>
 
             <h2 style="margin-bottom: 20px; color: var(--text-secondary);">Tulevat ylilennot</h2>
@@ -365,12 +363,9 @@
                         <th>#</th>
                         <th>Satelliitti</th>
                         <th>Alkaa</th>
-                        <th>Suunta</th>
-                        <th>Huippu</th>
-                        <th>Päättyy</th>
+                        <th>Ilmestyy</th>
+                        <th>Kulkee</th>
                         <th>Elevaatio</th>
-                        <th>Etäisyys</th>
-                        <th>Kesto</th>
                         <th>Näkyvyys</th>
                     </tr>
                 </thead>
@@ -445,10 +440,14 @@
                 document.getElementById('next-time').textContent =
                     formatTime(next.start_time_local);
 
-                // Show direction
-                const directionEl = document.getElementById('next-direction');
+                // Show directions
+                const appearEl = document.getElementById('next-appear');
+                const movementEl = document.getElementById('next-movement');
                 if (next.start_direction && next.start_azimuth !== undefined) {
-                    directionEl.textContent = `Suunta: ${next.start_direction} (${next.start_azimuth}°)`;
+                    appearEl.textContent = `📍 Ilmestyy: ${next.start_direction} (${next.start_azimuth}°)`;
+                }
+                if (next.movement_direction && next.movement_azimuth !== undefined) {
+                    movementEl.textContent = `➜ Kulkusuunta: ${next.movement_direction} (${next.movement_azimuth}°)`;
                 }
 
                 startCountdown(new Date(next.start_time_utc));
@@ -467,7 +466,8 @@
             } else {
                 document.getElementById('next-satellite').textContent = 'Ei tulevia ylilentoja';
                 document.getElementById('next-time').textContent = '-';
-                document.getElementById('next-direction').textContent = '';
+                document.getElementById('next-appear').textContent = '';
+                document.getElementById('next-movement').textContent = '';
                 document.getElementById('countdown').textContent = '';
                 document.getElementById('next-visibility').style.display = 'none';
             }
@@ -476,38 +476,40 @@
             const tbody = document.getElementById('passes-body');
             tbody.innerHTML = '';
 
+            let displayIndex = 0;
             passesData.passes.forEach((pass, index) => {
-                const row = document.createElement('tr');
                 const startTime = new Date(pass.start_time_utc);
                 const isPast = startTime < now;
 
+                // Piilota menneet ylilennot
                 if (isPast) {
-                    row.style.opacity = '0.5';
+                    return;
                 }
+
+                displayIndex++;
+                const row = document.createElement('tr');
 
                 const elevClass = pass.max_elevation >= 60 ? 'elevation-high' :
                                   pass.max_elevation >= 30 ? 'elevation-medium' : 'elevation-low';
 
                 const visibilityCategory = (pass.visibility_category || 'Unknown').toLowerCase();
                 const visibilityClass = `visibility-${visibilityCategory}`;
-                const visibilityRating = pass.visibility_rating || 0;
                 const visibilityEmoji = visibilityCategory === 'excellent' ? '★' :
                                        visibilityCategory === 'good' ? '◐' :
                                        visibilityCategory === 'fair' ? '◔' : '○';
 
-                const direction = pass.start_direction || 'N';
-                const azimuth = pass.start_azimuth || 0;
+                const appearDir = pass.start_direction || 'N';
+                const appearAz = pass.start_azimuth || 0;
+                const moveDir = pass.movement_direction || 'N';
+                const moveAz = pass.movement_azimuth || 0;
 
                 row.innerHTML = `
-                    <td>${index + 1}</td>
+                    <td>${displayIndex}</td>
                     <td class="satellite-name-cell">${pass.satellite}</td>
                     <td class="time-cell">${formatTime(pass.start_time_local)}</td>
-                    <td><strong>${direction}</strong> ${azimuth}°</td>
-                    <td class="time-cell">${formatTimeOnly(pass.max_elevation_time_local)}</td>
-                    <td class="time-cell">${formatTimeOnly(pass.end_time_local)}</td>
+                    <td><strong>${appearDir}</strong> ${appearAz}°</td>
+                    <td><strong>${moveDir}</strong> ${moveAz}°</td>
                     <td class="${elevClass}">${pass.max_elevation}°</td>
-                    <td>${pass.min_distance_km} km</td>
-                    <td>${pass.duration_minutes} min</td>
                     <td class="${visibilityClass}">${visibilityEmoji} ${pass.visibility_category || 'N/A'}</td>
                 `;
                 tbody.appendChild(row);

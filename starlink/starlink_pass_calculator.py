@@ -535,6 +535,18 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         # Ylilento päättyy
                         pass_data['end_time'] = current_time
                         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
+
+                        # Laske satelliitin kulkusuunta (movement direction) kahdesta ensimmäisestä positiosta
+                        if len(pass_data['positions']) >= 2:
+                            pos1 = pass_data['positions'][0]  # (time, lat, lon, alt, elev)
+                            pos2 = pass_data['positions'][1]
+                            movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
+                            pass_data['movement_azimuth'] = movement_az
+                            pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                        else:
+                            pass_data['movement_azimuth'] = pass_data['start_azimuth']
+                            pass_data['movement_direction'] = pass_data['start_direction']
+
                         del pass_data['positions']  # Poista yksityiskohtaiset positiot säästääkseen muistia
                         passes.append(pass_data)
                         in_pass = False
@@ -549,6 +561,18 @@ def find_passes(satellites: List[Tuple[str, str, str]],
         if in_pass and pass_data:
             pass_data['end_time'] = current_time
             pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
+
+            # Laske kulkusuunta
+            if 'positions' in pass_data and len(pass_data['positions']) >= 2:
+                pos1 = pass_data['positions'][0]
+                pos2 = pass_data['positions'][1]
+                movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
+                pass_data['movement_azimuth'] = movement_az
+                pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+            else:
+                pass_data['movement_azimuth'] = pass_data.get('start_azimuth', 0)
+                pass_data['movement_direction'] = pass_data.get('start_direction', 'N')
+
             if 'positions' in pass_data:
                 del pass_data['positions']
             passes.append(pass_data)
@@ -583,7 +607,9 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'visibility_rating': p.get('max_visibility_rating', 0),
             'visibility_category': p.get('max_visibility_category', 'Unknown'),
             'start_azimuth': round(p.get('start_azimuth', 0), 1),
-            'start_direction': p.get('start_direction', 'N')
+            'start_direction': p.get('start_direction', 'N'),
+            'movement_azimuth': round(p.get('movement_azimuth', 0), 1),
+            'movement_direction': p.get('movement_direction', 'N')
         })
 
     return {
@@ -616,18 +642,21 @@ def format_pass(pass_info: dict, local_tz_offset: int = 2) -> str:
 
     visibility_rating = pass_info.get('max_visibility_rating', 0)
     visibility_category = pass_info.get('max_visibility_category', 'Unknown')
-    azimuth = pass_info.get('start_azimuth', 0)
-    direction = pass_info.get('start_direction', 'N')
+    start_az = pass_info.get('start_azimuth', 0)
+    start_dir = pass_info.get('start_direction', 'N')
+    move_az = pass_info.get('movement_azimuth', 0)
+    move_dir = pass_info.get('movement_direction', 'N')
 
     return (
         f"  {pass_info['satellite']}\n"
-        f"    Alkaa:     {start_local.strftime('%Y-%m-%d %H:%M:%S')} (UTC+{local_tz_offset})\n"
-        f"    Suunta:    {direction} ({azimuth:.1f}°)\n"
-        f"    Huippu:    {max_elev_local.strftime('%H:%M:%S')} - elevaatio {pass_info['max_elevation']:.1f}°\n"
-        f"    Päättyy:   {end_local.strftime('%H:%M:%S')}\n"
-        f"    Kesto:     {duration_min:.1f} min\n"
-        f"    Lähin:     {pass_info['min_distance']:.0f} km\n"
-        f"    Näkyvyys:  {visibility_category} ({visibility_rating}/100)\n"
+        f"    Alkaa:       {start_local.strftime('%Y-%m-%d %H:%M:%S')} (UTC+{local_tz_offset})\n"
+        f"    Ilmestyy:    {start_dir} ({start_az:.1f}°)\n"
+        f"    Kulkusuunta: {move_dir} ({move_az:.1f}°)\n"
+        f"    Huippu:      {max_elev_local.strftime('%H:%M:%S')} - elevaatio {pass_info['max_elevation']:.1f}°\n"
+        f"    Päättyy:     {end_local.strftime('%H:%M:%S')}\n"
+        f"    Kesto:       {duration_min:.1f} min\n"
+        f"    Lähin:       {pass_info['min_distance']:.0f} km\n"
+        f"    Näkyvyys:    {visibility_category} ({visibility_rating}/100)\n"
     )
 
 
