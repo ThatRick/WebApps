@@ -1,32 +1,16 @@
-name: Update Starlink Passes and Deploy
+name: Update Starlink Data (Manual)
+
+# This workflow is for manually regenerating satellite data without deploying
+# Automated updates and deployment are handled by deploy.yml
 
 on:
-  # Aja manuaalisesti
   workflow_dispatch:
-  # Aja automaattisesti 6 tunnin välein
-  schedule:
-    - cron: '0 */6 * * *'
-  # Aja kun main-haaraan tai claude/*-haaraan pusketaan
-  push:
-    branches:
-      - main
-      - 'claude/**'
-    paths:
-      - 'starlink/**'
-      - '.github/workflows/update-passes.yml'
-
-# Salli vain yksi samanaikainen deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  update-and-deploy:
+  update-data:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pages: write
-      id-token: write
 
     steps:
       - name: Checkout
@@ -37,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Update Starlink pass data
+      - name: Calculate Starlink passes
         run: |
           echo "Calculating Starlink passes for Jyväskylä, Finland..."
           cd starlink
@@ -51,17 +35,17 @@ jobs:
             --json docs/passes.json \
             --top 5
 
-      - name: Verify JSON was created
+      - name: Verify passes.json
         run: |
           if [ -f starlink/docs/passes.json ]; then
-            echo "passes.json created successfully"
+            echo "✓ passes.json created successfully"
             echo "Total passes: $(cat starlink/docs/passes.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_passes"])')"
           else
             echo "ERROR: passes.json not created"
             exit 1
           fi
 
-      - name: Generate TLE dataset for client-side calculations
+      - name: Generate TLE dataset
         run: |
           echo "Generating TLE dataset..."
           cd starlink
@@ -74,25 +58,21 @@ jobs:
             --no-cache \
             --output docs/starlink-tle-data.json
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Build TypeScript
+      - name: Verify TLE data
         run: |
-          cd starlink
-          npm ci
-          npm run build
+          if [ -f starlink/docs/starlink-tle-data.json ]; then
+            echo "✓ TLE dataset created successfully"
+            SATS=$(cat starlink/docs/starlink-tle-data.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_satellites"])')
+            echo "Total satellites: $SATS"
+          else
+            echo "ERROR: starlink-tle-data.json not created"
+            exit 1
+          fi
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Show summary
+        run: |
+          echo "================================================"
+          echo "Data generation completed successfully!"
+          echo "Note: This workflow only generates data."
+          echo "To deploy, push to a branch or run the 'Deploy to GitHub Pages' workflow."
+          echo "================================================"

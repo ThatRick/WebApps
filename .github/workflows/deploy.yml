@@ -1,10 +1,13 @@
-name: Deploy static content to Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
       - main
       - 'claude/**'
+  # Run every 6 hours to update satellite data
+  schedule:
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,28 +17,86 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true  # Cancel older runs to avoid conflicts
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Generate landing page
-        run: node scripts/updateLandingPage.js
+      - name: Calculate Starlink passes
+        run: |
+          echo "Calculating Starlink passes for Jyväskylä, Finland..."
+          cd starlink
+          python starlink_pass_calculator.py \
+            --lat 62.2426 \
+            --lon 25.7473 \
+            --max-distance 500 \
+            --hours 24 \
+            --tz 2 \
+            --no-cache \
+            --json docs/passes.json \
+            --top 5
+
+      - name: Verify passes.json was created
+        run: |
+          if [ -f starlink/docs/passes.json ]; then
+            echo "✓ passes.json created successfully"
+            echo "Total passes: $(cat starlink/docs/passes.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_passes"])')"
+          else
+            echo "ERROR: passes.json not created"
+            exit 1
+          fi
+
+      - name: Generate TLE dataset for client-side calculations
+        run: |
+          echo "Generating TLE dataset for client-side orbit calculations..."
+          cd starlink
+          python generate_tle_data.py \
+            --lat 62.2426 \
+            --lon 25.7473 \
+            --location "Jyväskylä, Finland" \
+            --max-distance 500 \
+            --hours 24 \
+            --no-cache \
+            --output docs/starlink-tle-data.json
+
+      - name: Verify TLE data was created
+        run: |
+          if [ -f starlink/docs/starlink-tle-data.json ]; then
+            echo "✓ TLE dataset created successfully"
+            SATS=$(cat starlink/docs/starlink-tle-data.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_satellites"])')
+            echo "Total satellites: $SATS"
+          else
+            echo "ERROR: starlink-tle-data.json not created"
+            exit 1
+          fi
 
       - name: Build Starlink TypeScript
         run: |
           cd starlink
           npm ci
           npm run build
+
+      - name: Generate landing page
+        run: node scripts/updateLandingPage.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -45,13 +106,7 @@ jobs:
         with:
           path: .
 
-  deploy:
-    permissions:
-      pages: write
-      id-token: write
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
