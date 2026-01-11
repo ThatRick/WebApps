@@ -3,3 +3,7 @@ starlink_tle_cache.txt
 
 # Output files
 starlink_passes_*.txt
+
+# Node modules and build artifacts
+node_modules/
+dist/
