@@ -62,7 +62,7 @@ export class SatellitePropagator {
     if (!this.satrec) return null;
 
     return {
-      inclination: satellite.degreesLat(this.satrec.inclo),
+      inclination: satellite.radiansToDegrees(this.satrec.inclo),
       meanMotion: this.satrec.no * 1440 / (2 * Math.PI), // Convert rad/min to rev/day
       eccentricity: this.satrec.ecco,
       period: (2 * Math.PI) / this.satrec.no // minutes
