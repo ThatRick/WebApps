@@ -5,6 +5,48 @@
 import type { PassesData, PassCalculationProgress } from './types';
 import { OrbitManager } from './orbit/orbitManager';
 
+// Build timestamp - updated on each build
+const BUILD_TIME = new Date().toISOString();
+
+class DebugLogger {
+  private logElement: HTMLElement | null = null;
+
+  constructor() {
+    this.logElement = document.getElementById('debug-log');
+    this.showBuildTime();
+  }
+
+  private showBuildTime(): void {
+    const buildTimeEl = document.getElementById('build-time');
+    if (buildTimeEl) {
+      const buildDate = new Date(BUILD_TIME);
+      buildTimeEl.textContent = `Built: ${buildDate.toLocaleString('fi-FI')}`;
+    }
+  }
+
+  log(message: string, type: 'info' | 'warn' | 'error' = 'info'): void {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+
+    if (this.logElement) {
+      const entry = document.createElement('div');
+      entry.className = `debug-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('fi-FI');
+      entry.textContent = `[${timestamp}] ${message}`;
+      this.logElement.appendChild(entry);
+
+      // Auto-scroll to bottom
+      this.logElement.scrollTop = this.logElement.scrollHeight;
+
+      // Limit to 100 entries
+      while (this.logElement.children.length > 100) {
+        this.logElement.removeChild(this.logElement.firstChild!);
+      }
+    }
+  }
+}
+
+const debugLogger = new DebugLogger();
+
 class StarlinkPassTracker {
   private passesData: PassesData | null = null;
   private countdownInterval: number | null = null;
@@ -19,6 +61,7 @@ class StarlinkPassTracker {
     const urlParams = new URLSearchParams(window.location.search);
     this.useClientCalculation = urlParams.get('calc') !== 'server';
 
+    debugLogger.log(`Initialization: Using ${this.useClientCalculation ? 'client-side' : 'server-side'} calculation`, 'info');
     this.init();
   }
 
@@ -30,29 +73,33 @@ class StarlinkPassTracker {
 
   private async loadPasses(): Promise<void> {
     try {
+      debugLogger.log('Loading passes...', 'info');
       if (this.useClientCalculation) {
         await this.loadAndCalculate();
       } else {
         await this.loadPreCalculated();
       }
+      debugLogger.log(`Loaded ${this.passesData?.total_passes || 0} passes`, 'info');
       this.displayData();
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      debugLogger.log(`Error loading passes: ${errorMsg}`, 'error');
       console.error('Error loading passes:', error);
       this.showError();
     }
   }
 
   private async loadPreCalculated(): Promise<void> {
-    console.log('Loading pre-calculated passes...');
+    debugLogger.log('Fetching pre-calculated passes.json...', 'info');
     const response = await fetch('passes.json');
-    if (!response.ok) throw new Error('Failed to load passes.json');
+    if (!response.ok) throw new Error(`Failed to load passes.json: ${response.status} ${response.statusText}`);
     const data: PassesData = await response.json();
     this.passesData = data;
-    console.log(`Loaded ${data.total_passes} pre-calculated passes`);
+    debugLogger.log(`Loaded ${data.total_passes} pre-calculated passes`, 'info');
   }
 
   private async loadAndCalculate(): Promise<void> {
-    console.log('Using client-side orbit calculations...');
+    debugLogger.log('Starting client-side orbit calculations...', 'info');
 
     // Show calculating message
     this.showCalculating();
@@ -62,14 +109,23 @@ class StarlinkPassTracker {
     }
 
     // Load TLE data
-    await this.orbitManager.loadTLEData();
+    debugLogger.log('Loading TLE dataset...', 'info');
+    try {
+      await this.orbitManager.loadTLEData();
+      debugLogger.log('TLE data loaded successfully', 'info');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      debugLogger.log(`Failed to load TLE data: ${errorMsg}`, 'error');
+      throw error;
+    }
 
     // Calculate passes with progress updates
+    debugLogger.log('Calculating satellite passes...', 'info');
     this.passesData = await this.orbitManager.calculatePasses(24, (progress) => {
       this.updateCalculationProgress(progress);
     });
 
-    console.log(`Calculated ${this.passesData.total_passes} passes`);
+    debugLogger.log(`Calculated ${this.passesData.total_passes} passes`, 'info');
   }
 
   private showCalculating(): void {
@@ -163,15 +219,24 @@ class StarlinkPassTracker {
   }
 
   private displayNextPass(): void {
-    if (!this.passesData) return;
+    if (!this.passesData) {
+      debugLogger.log('displayNextPass: No passes data available', 'warn');
+      return;
+    }
 
     const now = new Date();
+    debugLogger.log(`displayNextPass: Current time: ${now.toISOString()}`, 'info');
+    debugLogger.log(`displayNextPass: Total passes in dataset: ${this.passesData.passes.length}`, 'info');
+
     const futurePasses = this.passesData.passes.filter(
       p => new Date(p.start_time_utc) > now
     );
 
+    debugLogger.log(`displayNextPass: Future passes found: ${futurePasses.length}`, 'info');
+
     if (futurePasses.length > 0) {
       const next = futurePasses[0];
+      debugLogger.log(`Next pass: ${next.satellite} at ${next.start_time_utc}`, 'info');
 
       const satelliteEl = document.getElementById('next-satellite');
       if (satelliteEl) satelliteEl.textContent = next.satellite;
@@ -207,6 +272,11 @@ class StarlinkPassTracker {
         this.startPositionTracking();
       }
     } else {
+      debugLogger.log('No future passes available', 'warn');
+      if (this.passesData.passes.length > 0) {
+        const lastPass = this.passesData.passes[this.passesData.passes.length - 1];
+        debugLogger.log(`Last pass was: ${lastPass.satellite} at ${lastPass.start_time_utc}`, 'info');
+      }
       this.clearNextPass();
     }
   }
@@ -377,9 +447,23 @@ class StarlinkPassTracker {
   }
 }
 
+// Global error handlers
+window.addEventListener('error', (event) => {
+  debugLogger.log(`Uncaught error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`, 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  debugLogger.log(`Unhandled promise rejection: ${event.reason}`, 'error');
+});
+
 // Initialize the app when DOM is ready
+debugLogger.log('DOM ready, initializing app...', 'info');
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new StarlinkPassTracker());
+  document.addEventListener('DOMContentLoaded', () => {
+    debugLogger.log('DOMContentLoaded event fired', 'info');
+    new StarlinkPassTracker();
+  });
 } else {
+  debugLogger.log('DOM already loaded', 'info');
   new StarlinkPassTracker();
 }
