@@ -9,8 +9,11 @@
     "clean": "rm -rf dist docs/app.js"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6",
     "esbuild": "^0.19.11",
-    "@types/node": "^20.10.6"
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "satellite.js": "^6.0.2"
   }
 }

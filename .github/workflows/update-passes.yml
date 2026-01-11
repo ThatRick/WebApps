@@ -61,6 +61,19 @@ jobs:
             exit 1
           fi
 
+      - name: Generate TLE dataset for client-side calculations
+        run: |
+          echo "Generating TLE dataset..."
+          cd starlink
+          python generate_tle_data.py \
+            --lat 62.2426 \
+            --lon 25.7473 \
+            --location "Jyväskylä, Finland" \
+            --max-distance 500 \
+            --hours 24 \
+            --no-cache \
+            --output docs/starlink-tle-data.json
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
