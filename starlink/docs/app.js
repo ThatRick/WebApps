@@ -1892,7 +1892,7 @@
       if (!this.satrec)
         return null;
       return {
-        inclination: degreesLat(this.satrec.inclo),
+        inclination: radiansToDegrees(this.satrec.inclo),
         meanMotion: this.satrec.no * 1440 / (2 * Math.PI),
         // Convert rad/min to rev/day
         eccentricity: this.satrec.ecco,
