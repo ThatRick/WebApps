@@ -419,7 +419,6 @@
 
             // Stats
             document.getElementById('total-passes').textContent = passesData.total_passes;
-            document.getElementById('next-hours').textContent = passesData.parameters.hours_ahead;
 
             if (passesData.passes.length > 0) {
                 const avgElev = passesData.passes.reduce((sum, p) => sum + p.max_elevation, 0) / passesData.passes.length;
