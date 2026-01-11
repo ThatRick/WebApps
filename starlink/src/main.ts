@@ -8,13 +8,16 @@ import { OrbitManager } from './orbit/orbitManager';
 class StarlinkPassTracker {
   private passesData: PassesData | null = null;
   private countdownInterval: number | null = null;
+  private positionInterval: number | null = null;
   private orbitManager: OrbitManager | null = null;
   private useClientCalculation: boolean = false;
+  private nextSatelliteName: string | null = null;
 
   constructor() {
-    // Check URL parameter for client-side calculation mode
+    // Check URL parameter for calculation mode
+    // Default to client-side calculation, can override with ?calc=server
     const urlParams = new URLSearchParams(window.location.search);
-    this.useClientCalculation = urlParams.get('calc') === 'client';
+    this.useClientCalculation = urlParams.get('calc') !== 'server';
 
     this.init();
   }
@@ -197,6 +200,12 @@ class StarlinkPassTracker {
         visibilityBadge.textContent = `${emoji} Näkyvyys: ${next.visibility_category}`;
         visibilityBadge.style.display = 'inline-block';
       }
+
+      // Start real-time position tracking if using client-side calculation
+      if (this.useClientCalculation && this.orbitManager) {
+        this.nextSatelliteName = next.satellite;
+        this.startPositionTracking();
+      }
     } else {
       this.clearNextPass();
     }
@@ -209,6 +218,8 @@ class StarlinkPassTracker {
     const movementEl = document.getElementById('next-movement');
     const countdownEl = document.getElementById('countdown');
     const visibilityEl = document.getElementById('next-visibility');
+    const elevationEl = document.getElementById('next-elevation');
+    const distanceEl = document.getElementById('next-distance');
 
     if (satelliteEl) satelliteEl.textContent = 'Ei tulevia ylilentoja';
     if (timeEl) timeEl.textContent = '-';
@@ -216,6 +227,51 @@ class StarlinkPassTracker {
     if (movementEl) movementEl.textContent = '';
     if (countdownEl) countdownEl.textContent = '';
     if (visibilityEl) visibilityEl.style.display = 'none';
+    if (elevationEl) elevationEl.textContent = '';
+    if (distanceEl) distanceEl.textContent = '';
+
+    // Stop position tracking
+    if (this.positionInterval !== null) {
+      clearInterval(this.positionInterval);
+      this.positionInterval = null;
+    }
+    this.nextSatelliteName = null;
+  }
+
+  private startPositionTracking(): void {
+    // Clear existing interval
+    if (this.positionInterval !== null) {
+      clearInterval(this.positionInterval);
+    }
+
+    // Update immediately
+    this.updateSatellitePosition();
+
+    // Update every second
+    this.positionInterval = window.setInterval(() => {
+      this.updateSatellitePosition();
+    }, 1000);
+  }
+
+  private updateSatellitePosition(): void {
+    if (!this.orbitManager || !this.nextSatelliteName) return;
+
+    const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
+    if (!position) return;
+
+    const elevationEl = document.getElementById('next-elevation');
+    const distanceEl = document.getElementById('next-distance');
+
+    if (elevationEl) {
+      const elevClass = position.elevation < 0 ? 'text-secondary' :
+                       position.elevation >= 60 ? 'elevation-high' :
+                       position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+      elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
+    }
+
+    if (distanceEl) {
+      distanceEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+    }
   }
 
   private displayPassesTable(): void {

@@ -2235,6 +2235,28 @@
       const expiresAt = new Date(this.tleDataset.cache_expires_at);
       return /* @__PURE__ */ new Date() > expiresAt;
     }
+    /**
+     * Get current position of a satellite by name
+     */
+    getSatellitePosition(satelliteName, time) {
+      if (!this.tleDataset) {
+        return null;
+      }
+      const satTle = this.tleDataset.satellites.find((s) => s.name === satelliteName);
+      if (!satTle) {
+        return null;
+      }
+      const propagator = new SatellitePropagator(satTle);
+      if (!propagator.isValid()) {
+        return null;
+      }
+      const currentTime = time || /* @__PURE__ */ new Date();
+      return propagator.propagate(
+        currentTime,
+        this.tleDataset.observer.latitude,
+        this.tleDataset.observer.longitude
+      );
+    }
   };
 
   // src/main.ts
@@ -2242,10 +2264,12 @@
     constructor() {
       this.passesData = null;
       this.countdownInterval = null;
+      this.positionInterval = null;
       this.orbitManager = null;
       this.useClientCalculation = false;
+      this.nextSatelliteName = null;
       const urlParams = new URLSearchParams(window.location.search);
-      this.useClientCalculation = urlParams.get("calc") === "client";
+      this.useClientCalculation = urlParams.get("calc") !== "server";
       this.init();
     }
     async init() {
@@ -2399,6 +2423,10 @@
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
         }
+        if (this.useClientCalculation && this.orbitManager) {
+          this.nextSatelliteName = next.satellite;
+          this.startPositionTracking();
+        }
       } else {
         this.clearNextPass();
       }
@@ -2410,6 +2438,8 @@
       const movementEl = document.getElementById("next-movement");
       const countdownEl = document.getElementById("countdown");
       const visibilityEl = document.getElementById("next-visibility");
+      const elevationEl = document.getElementById("next-elevation");
+      const distanceEl = document.getElementById("next-distance");
       if (satelliteEl)
         satelliteEl.textContent = "Ei tulevia ylilentoja";
       if (timeEl)
@@ -2422,6 +2452,40 @@
         countdownEl.textContent = "";
       if (visibilityEl)
         visibilityEl.style.display = "none";
+      if (elevationEl)
+        elevationEl.textContent = "";
+      if (distanceEl)
+        distanceEl.textContent = "";
+      if (this.positionInterval !== null) {
+        clearInterval(this.positionInterval);
+        this.positionInterval = null;
+      }
+      this.nextSatelliteName = null;
+    }
+    startPositionTracking() {
+      if (this.positionInterval !== null) {
+        clearInterval(this.positionInterval);
+      }
+      this.updateSatellitePosition();
+      this.positionInterval = window.setInterval(() => {
+        this.updateSatellitePosition();
+      }, 1e3);
+    }
+    updateSatellitePosition() {
+      if (!this.orbitManager || !this.nextSatelliteName)
+        return;
+      const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
+      if (!position)
+        return;
+      const elevationEl = document.getElementById("next-elevation");
+      const distanceEl = document.getElementById("next-distance");
+      if (elevationEl) {
+        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
+        elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
+      }
+      if (distanceEl) {
+        distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
+      }
     }
     displayPassesTable() {
       if (!this.passesData)
