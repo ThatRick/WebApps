@@ -31,17 +31,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Detect what changed to skip expensive steps
+      - name: Check for Python changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "python_changed=true" >> $GITHUB_OUTPUT
+            echo "Scheduled run or manual trigger - will recalculate data"
+          else
+            # Check if Python files or data generation scripts changed
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changed_files.txt
+            if grep -E "^starlink/.*\.py$" changed_files.txt; then
+              echo "python_changed=true" >> $GITHUB_OUTPUT
+              echo "Python files changed - will recalculate data"
+            else
+              echo "python_changed=false" >> $GITHUB_OUTPUT
+              echo "No Python changes - will use existing data"
+            fi
+          fi
+
       - name: Set up Python
+        if: steps.changes.outputs.python_changed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Calculate Starlink passes
+        if: steps.changes.outputs.python_changed == 'true'
         run: |
           echo "Calculating Starlink passes for Jyväskylä, Finland..."
           cd starlink
@@ -55,17 +71,18 @@ jobs:
             --json docs/passes.json \
             --top 5
 
-      - name: Verify passes.json was created
+      - name: Verify passes.json exists
         run: |
           if [ -f starlink/docs/passes.json ]; then
-            echo "✓ passes.json created successfully"
-            echo "Total passes: $(cat starlink/docs/passes.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_passes"])')"
+            echo "✓ passes.json found"
+            echo "Total passes: $(cat starlink/docs/passes.json | python3 -c 'import sys,json; print(json.load(sys.stdin)["total_passes"])')"
           else
-            echo "ERROR: passes.json not created"
+            echo "ERROR: passes.json not found and was not generated"
             exit 1
           fi
 
       - name: Generate TLE dataset for client-side calculations
+        if: steps.changes.outputs.python_changed == 'true'
         run: |
           echo "Generating TLE dataset for client-side orbit calculations..."
           cd starlink
@@ -78,16 +95,21 @@ jobs:
             --no-cache \
             --output docs/starlink-tle-data.json
 
-      - name: Verify TLE data was created
+      - name: Verify TLE data exists
         run: |
           if [ -f starlink/docs/starlink-tle-data.json ]; then
-            echo "✓ TLE dataset created successfully"
-            SATS=$(cat starlink/docs/starlink-tle-data.json | python -c 'import sys,json; print(json.load(sys.stdin)["total_satellites"])')
+            echo "✓ TLE dataset found"
+            SATS=$(cat starlink/docs/starlink-tle-data.json | python3 -c 'import sys,json; print(json.load(sys.stdin)["total_satellites"])')
             echo "Total satellites: $SATS"
           else
-            echo "ERROR: starlink-tle-data.json not created"
+            echo "ERROR: starlink-tle-data.json not found and was not generated"
             exit 1
           fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Build Starlink TypeScript
         run: |
@@ -109,4 +131,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
 
