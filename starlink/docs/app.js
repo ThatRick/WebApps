@@ -2235,17 +2235,72 @@
       const expiresAt = new Date(this.tleDataset.cache_expires_at);
       return /* @__PURE__ */ new Date() > expiresAt;
     }
+    /**
+     * Get current position of a satellite by name
+     */
+    getSatellitePosition(satelliteName, time) {
+      if (!this.tleDataset) {
+        return null;
+      }
+      const satTle = this.tleDataset.satellites.find((s) => s.name === satelliteName);
+      if (!satTle) {
+        return null;
+      }
+      const propagator = new SatellitePropagator(satTle);
+      if (!propagator.isValid()) {
+        return null;
+      }
+      const currentTime = time || /* @__PURE__ */ new Date();
+      return propagator.propagate(
+        currentTime,
+        this.tleDataset.observer.latitude,
+        this.tleDataset.observer.longitude
+      );
+    }
   };
 
   // src/main.ts
+  var BUILD_TIME = (/* @__PURE__ */ new Date()).toISOString();
+  var DebugLogger = class {
+    constructor() {
+      this.logElement = null;
+      this.logElement = document.getElementById("debug-log");
+      this.showBuildTime();
+    }
+    showBuildTime() {
+      const buildTimeEl = document.getElementById("build-time");
+      if (buildTimeEl) {
+        const buildDate = new Date(BUILD_TIME);
+        buildTimeEl.textContent = `Built: ${buildDate.toLocaleString("fi-FI")}`;
+      }
+    }
+    log(message, type = "info") {
+      console.log(`[${type.toUpperCase()}] ${message}`);
+      if (this.logElement) {
+        const entry = document.createElement("div");
+        entry.className = `debug-entry ${type}`;
+        const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("fi-FI");
+        entry.textContent = `[${timestamp}] ${message}`;
+        this.logElement.appendChild(entry);
+        this.logElement.scrollTop = this.logElement.scrollHeight;
+        while (this.logElement.children.length > 100) {
+          this.logElement.removeChild(this.logElement.firstChild);
+        }
+      }
+    }
+  };
+  var debugLogger = new DebugLogger();
   var StarlinkPassTracker = class {
     constructor() {
       this.passesData = null;
       this.countdownInterval = null;
+      this.positionInterval = null;
       this.orbitManager = null;
       this.useClientCalculation = false;
+      this.nextSatelliteName = null;
       const urlParams = new URLSearchParams(window.location.search);
-      this.useClientCalculation = urlParams.get("calc") === "client";
+      this.useClientCalculation = urlParams.get("calc") !== "server";
+      debugLogger.log(`Initialization: Using ${this.useClientCalculation ? "client-side" : "server-side"} calculation`, "info");
       this.init();
     }
     async init() {
@@ -2254,37 +2309,50 @@
     }
     async loadPasses() {
       try {
+        debugLogger.log("Loading passes...", "info");
         if (this.useClientCalculation) {
           await this.loadAndCalculate();
         } else {
           await this.loadPreCalculated();
         }
+        debugLogger.log(`Loaded ${this.passesData?.total_passes || 0} passes`, "info");
         this.displayData();
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        debugLogger.log(`Error loading passes: ${errorMsg}`, "error");
         console.error("Error loading passes:", error);
         this.showError();
       }
     }
     async loadPreCalculated() {
-      console.log("Loading pre-calculated passes...");
+      debugLogger.log("Fetching pre-calculated passes.json...", "info");
       const response = await fetch("passes.json");
       if (!response.ok)
-        throw new Error("Failed to load passes.json");
+        throw new Error(`Failed to load passes.json: ${response.status} ${response.statusText}`);
       const data = await response.json();
       this.passesData = data;
-      console.log(`Loaded ${data.total_passes} pre-calculated passes`);
+      debugLogger.log(`Loaded ${data.total_passes} pre-calculated passes`, "info");
     }
     async loadAndCalculate() {
-      console.log("Using client-side orbit calculations...");
+      debugLogger.log("Starting client-side orbit calculations...", "info");
       this.showCalculating();
       if (!this.orbitManager) {
         this.orbitManager = new OrbitManager();
       }
-      await this.orbitManager.loadTLEData();
+      debugLogger.log("Loading TLE dataset...", "info");
+      try {
+        await this.orbitManager.loadTLEData();
+        debugLogger.log("TLE data loaded successfully", "info");
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        debugLogger.log(`Failed to load TLE data: ${errorMsg}`, "error");
+        throw error;
+      }
+      debugLogger.log("Calculating satellite passes...", "info");
       this.passesData = await this.orbitManager.calculatePasses(24, (progress) => {
         this.updateCalculationProgress(progress);
       });
-      console.log(`Calculated ${this.passesData.total_passes} passes`);
+      debugLogger.log(`Calculated ${this.passesData.total_passes} passes`, "info");
     }
     showCalculating() {
       const loadingEl = document.getElementById("loading");
@@ -2368,14 +2436,20 @@
       }
     }
     displayNextPass() {
-      if (!this.passesData)
+      if (!this.passesData) {
+        debugLogger.log("displayNextPass: No passes data available", "warn");
         return;
+      }
       const now = /* @__PURE__ */ new Date();
+      debugLogger.log(`displayNextPass: Current time: ${now.toISOString()}`, "info");
+      debugLogger.log(`displayNextPass: Total passes in dataset: ${this.passesData.passes.length}`, "info");
       const futurePasses = this.passesData.passes.filter(
         (p) => new Date(p.start_time_utc) > now
       );
+      debugLogger.log(`displayNextPass: Future passes found: ${futurePasses.length}`, "info");
       if (futurePasses.length > 0) {
         const next = futurePasses[0];
+        debugLogger.log(`Next pass: ${next.satellite} at ${next.start_time_utc}`, "info");
         const satelliteEl = document.getElementById("next-satellite");
         if (satelliteEl)
           satelliteEl.textContent = next.satellite;
@@ -2399,7 +2473,16 @@
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
         }
+        if (this.useClientCalculation && this.orbitManager) {
+          this.nextSatelliteName = next.satellite;
+          this.startPositionTracking();
+        }
       } else {
+        debugLogger.log("No future passes available", "warn");
+        if (this.passesData.passes.length > 0) {
+          const lastPass = this.passesData.passes[this.passesData.passes.length - 1];
+          debugLogger.log(`Last pass was: ${lastPass.satellite} at ${lastPass.start_time_utc}`, "info");
+        }
         this.clearNextPass();
       }
     }
@@ -2410,6 +2493,8 @@
       const movementEl = document.getElementById("next-movement");
       const countdownEl = document.getElementById("countdown");
       const visibilityEl = document.getElementById("next-visibility");
+      const elevationEl = document.getElementById("next-elevation");
+      const distanceEl = document.getElementById("next-distance");
       if (satelliteEl)
         satelliteEl.textContent = "Ei tulevia ylilentoja";
       if (timeEl)
@@ -2422,6 +2507,40 @@
         countdownEl.textContent = "";
       if (visibilityEl)
         visibilityEl.style.display = "none";
+      if (elevationEl)
+        elevationEl.textContent = "";
+      if (distanceEl)
+        distanceEl.textContent = "";
+      if (this.positionInterval !== null) {
+        clearInterval(this.positionInterval);
+        this.positionInterval = null;
+      }
+      this.nextSatelliteName = null;
+    }
+    startPositionTracking() {
+      if (this.positionInterval !== null) {
+        clearInterval(this.positionInterval);
+      }
+      this.updateSatellitePosition();
+      this.positionInterval = window.setInterval(() => {
+        this.updateSatellitePosition();
+      }, 1e3);
+    }
+    updateSatellitePosition() {
+      if (!this.orbitManager || !this.nextSatelliteName)
+        return;
+      const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
+      if (!position)
+        return;
+      const elevationEl = document.getElementById("next-elevation");
+      const distanceEl = document.getElementById("next-distance");
+      if (elevationEl) {
+        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
+        elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
+      }
+      if (distanceEl) {
+        distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
+      }
     }
     displayPassesTable() {
       if (!this.passesData)
@@ -2515,9 +2634,20 @@
       this.countdownInterval = window.setInterval(update, 1e3);
     }
   };
+  window.addEventListener("error", (event) => {
+    debugLogger.log(`Uncaught error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`, "error");
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    debugLogger.log(`Unhandled promise rejection: ${event.reason}`, "error");
+  });
+  debugLogger.log("DOM ready, initializing app...", "info");
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => new StarlinkPassTracker());
+    document.addEventListener("DOMContentLoaded", () => {
+      debugLogger.log("DOMContentLoaded event fired", "info");
+      new StarlinkPassTracker();
+    });
   } else {
+    debugLogger.log("DOM already loaded", "info");
     new StarlinkPassTracker();
   }
 })();

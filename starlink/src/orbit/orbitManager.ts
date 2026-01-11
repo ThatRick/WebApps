@@ -3,10 +3,12 @@
  */
 
 import { PassCalculator } from './calculator';
+import { SatellitePropagator } from './propagator';
 import type {
   TLEDataset,
   PassesData,
   SatellitePass,
+  SatellitePosition,
   PassCalculationProgress
 } from '../types';
 
@@ -102,5 +104,33 @@ export class OrbitManager {
 
     const expiresAt = new Date(this.tleDataset.cache_expires_at);
     return new Date() > expiresAt;
+  }
+
+  /**
+   * Get current position of a satellite by name
+   */
+  getSatellitePosition(satelliteName: string, time?: Date): SatellitePosition | null {
+    if (!this.tleDataset) {
+      return null;
+    }
+
+    // Find satellite TLE data
+    const satTle = this.tleDataset.satellites.find(s => s.name === satelliteName);
+    if (!satTle) {
+      return null;
+    }
+
+    // Create propagator and calculate position
+    const propagator = new SatellitePropagator(satTle);
+    if (!propagator.isValid()) {
+      return null;
+    }
+
+    const currentTime = time || new Date();
+    return propagator.propagate(
+      currentTime,
+      this.tleDataset.observer.latitude,
+      this.tleDataset.observer.longitude
+    );
   }
 }
