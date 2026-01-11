@@ -2,13 +2,20 @@
  * Starlink Pass Tracker - Main Application
  */
 
-import type { PassesData } from './types';
+import type { PassesData, PassCalculationProgress } from './types';
+import { OrbitManager } from './orbit/orbitManager';
 
 class StarlinkPassTracker {
   private passesData: PassesData | null = null;
   private countdownInterval: number | null = null;
+  private orbitManager: OrbitManager | null = null;
+  private useClientCalculation: boolean = false;
 
   constructor() {
+    // Check URL parameter for client-side calculation mode
+    const urlParams = new URLSearchParams(window.location.search);
+    this.useClientCalculation = urlParams.get('calc') === 'client';
+
     this.init();
   }
 
@@ -20,13 +27,66 @@ class StarlinkPassTracker {
 
   private async loadPasses(): Promise<void> {
     try {
-      const response = await fetch('passes.json');
-      if (!response.ok) throw new Error('Failed to load');
-      this.passesData = await response.json();
+      if (this.useClientCalculation) {
+        await this.loadAndCalculate();
+      } else {
+        await this.loadPreCalculated();
+      }
       this.displayData();
     } catch (error) {
       console.error('Error loading passes:', error);
       this.showError();
+    }
+  }
+
+  private async loadPreCalculated(): Promise<void> {
+    console.log('Loading pre-calculated passes...');
+    const response = await fetch('passes.json');
+    if (!response.ok) throw new Error('Failed to load passes.json');
+    const data: PassesData = await response.json();
+    this.passesData = data;
+    console.log(`Loaded ${data.total_passes} pre-calculated passes`);
+  }
+
+  private async loadAndCalculate(): Promise<void> {
+    console.log('Using client-side orbit calculations...');
+
+    // Show calculating message
+    this.showCalculating();
+
+    if (!this.orbitManager) {
+      this.orbitManager = new OrbitManager();
+    }
+
+    // Load TLE data
+    await this.orbitManager.loadTLEData();
+
+    // Calculate passes with progress updates
+    this.passesData = await this.orbitManager.calculatePasses(24, (progress) => {
+      this.updateCalculationProgress(progress);
+    });
+
+    console.log(`Calculated ${this.passesData.total_passes} passes`);
+  }
+
+  private showCalculating(): void {
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      const message = loadingEl.querySelector('p');
+      if (message) {
+        message.textContent = 'Lasketaan satelliittien ylilentoja...';
+      }
+    }
+  }
+
+  private updateCalculationProgress(progress: PassCalculationProgress): void {
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+      const message = loadingEl.querySelector('p');
+      if (message) {
+        const percent = ((progress.satellitesProcessed / progress.totalSatellites) * 100).toFixed(0);
+        message.textContent = `Lasketaan: ${progress.satellitesProcessed}/${progress.totalSatellites} satelliittia (${percent}%) - ${progress.passesFound} ylilentoa löydetty`;
+      }
     }
   }
 

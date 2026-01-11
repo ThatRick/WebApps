@@ -48,3 +48,53 @@ export interface CountdownTime {
   minutes: number;
   seconds: number;
 }
+
+// TLE (Two-Line Element) data types
+export interface TLEData {
+  name: string;
+  norad_id: string;
+  line1: string;
+  line2: string;
+}
+
+export interface TLEDataset {
+  generated_at: string;
+  source: string;
+  cache_expires_at: string;
+  total_satellites: number;
+  satellites: TLEData[];
+  observer: Observer;
+  parameters: Parameters;
+}
+
+// Orbit calculation types
+export interface SatellitePosition {
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  elevation: number;
+  azimuth: number;
+  distance: number;
+  time: Date;
+}
+
+export interface VisibilityInfo {
+  rating: number;
+  category: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  isIlluminated: boolean;
+  sunElevation: number;
+}
+
+export interface OrbitalElements {
+  inclination: number;
+  meanMotion: number;
+  eccentricity: number;
+  period: number;
+}
+
+export interface PassCalculationProgress {
+  satellitesProcessed: number;
+  totalSatellites: number;
+  passesFound: number;
+  currentSatellite: string;
+}
