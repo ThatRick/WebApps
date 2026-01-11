@@ -31,6 +31,12 @@ jobs:
       - name: Generate landing page
         run: node scripts/updateLandingPage.js
 
+      - name: Build Starlink TypeScript
+        run: |
+          cd starlink
+          npm ci
+          npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
