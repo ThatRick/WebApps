@@ -540,7 +540,8 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         if len(pass_data['positions']) >= 2:
                             pos1 = pass_data['positions'][0]  # (time, lat, lon, alt, elev)
                             pos2 = pass_data['positions'][1]
-                            movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
+                            # Laske suunta FROM pos1 TO pos2 (ei toisinpäin!)
+                            movement_az = calculate_azimuth(pos1[1], pos1[2], pos2[1], pos2[2])
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         else:
@@ -566,7 +567,8 @@ def find_passes(satellites: List[Tuple[str, str, str]],
             if 'positions' in pass_data and len(pass_data['positions']) >= 2:
                 pos1 = pass_data['positions'][0]
                 pos2 = pass_data['positions'][1]
-                movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
+                # Laske suunta FROM pos1 TO pos2 (ei toisinpäin!)
+                movement_az = calculate_azimuth(pos1[1], pos1[2], pos2[1], pos2[2])
                 pass_data['movement_azimuth'] = movement_az
                 pass_data['movement_direction'] = azimuth_to_direction(movement_az)
             else:
