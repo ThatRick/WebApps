@@ -62,7 +62,48 @@ class StarlinkPassTracker {
     this.useClientCalculation = urlParams.get('calc') === 'client';
 
     debugLogger.log(`Initialization: Using ${this.useClientCalculation ? 'client-side' : 'server-side'} calculation`, 'info');
+    this.updateCalcModeBadge();
     this.init();
+  }
+
+  private updateCalcModeBadge(): void {
+    const badge = document.getElementById('calc-mode-badge');
+    if (!badge) return;
+
+    if (this.useClientCalculation) {
+      badge.className = 'status-badge status-client';
+      badge.textContent = '⚙️ Client';
+    } else {
+      badge.className = 'status-badge status-server';
+      badge.textContent = '⚙️ Palvelin';
+    }
+  }
+
+  private updateTLEStatusBadge(status: 'loading' | 'ready' | 'error' | 'hidden'): void {
+    const badge = document.getElementById('tle-status-badge');
+    if (!badge) return;
+
+    if (status === 'hidden') {
+      badge.style.display = 'none';
+      return;
+    }
+
+    badge.style.display = 'inline-flex';
+
+    switch (status) {
+      case 'loading':
+        badge.className = 'status-badge status-loading';
+        badge.textContent = '📡 Ladataan TLE...';
+        break;
+      case 'ready':
+        badge.className = 'status-badge status-ready';
+        badge.textContent = '✓ Reaaliaikainen seuranta';
+        break;
+      case 'error':
+        badge.className = 'status-badge status-error';
+        badge.textContent = '⚠️ TLE lataus epäonnistui';
+        break;
+    }
   }
 
   private async init(): Promise<void> {
@@ -103,12 +144,14 @@ class StarlinkPassTracker {
 
   private async loadTLEDataInBackground(): Promise<void> {
     try {
+      this.updateTLEStatusBadge('loading');
       debugLogger.log('Loading TLE data in background for real-time tracking...', 'info');
       if (!this.orbitManager) {
         this.orbitManager = new OrbitManager();
       }
       await this.orbitManager.loadTLEData();
       debugLogger.log('TLE data loaded, enabling real-time tracking', 'info');
+      this.updateTLEStatusBadge('ready');
 
       // Enable position tracking for the next satellite if available
       if (this.nextSatelliteName) {
@@ -117,6 +160,7 @@ class StarlinkPassTracker {
     } catch (error) {
       debugLogger.log('Failed to load TLE data for real-time tracking (continuing without it)', 'warn');
       console.warn('TLE data load failed:', error);
+      this.updateTLEStatusBadge('error');
     }
   }
 
@@ -131,13 +175,16 @@ class StarlinkPassTracker {
     }
 
     // Load TLE data
+    this.updateTLEStatusBadge('loading');
     debugLogger.log('Loading TLE dataset...', 'info');
     try {
       await this.orbitManager.loadTLEData();
       debugLogger.log('TLE data loaded successfully', 'info');
+      this.updateTLEStatusBadge('ready');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       debugLogger.log(`Failed to load TLE data: ${errorMsg}`, 'error');
+      this.updateTLEStatusBadge('error');
       throw error;
     }
 

@@ -235,6 +235,53 @@
             opacity: 0.7;
         }
 
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid;
+        }
+
+        .status-server {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .status-client {
+            background: rgba(255, 170, 0, 0.15);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .status-loading {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-ready {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .status-error {
+            background: rgba(255, 68, 68, 0.15);
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
         .time-cell {
             font-family: 'Consolas', 'Monaco', monospace;
         }
@@ -386,6 +433,12 @@
             <div class="info-item">
                 <span class="info-label">Päivitetty:</span>
                 <span class="info-value" id="updated">-</span>
+            </div>
+            <div class="info-item">
+                <span id="calc-mode-badge" class="status-badge status-server">⚙️ Palvelin</span>
+            </div>
+            <div class="info-item">
+                <span id="tle-status-badge" class="status-badge status-loading" style="display: none;">📡 Ladataan TLE...</span>
             </div>
         </div>
 
