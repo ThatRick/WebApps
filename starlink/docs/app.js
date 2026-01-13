@@ -2299,7 +2299,7 @@
       this.useClientCalculation = false;
       this.nextSatelliteName = null;
       const urlParams = new URLSearchParams(window.location.search);
-      this.useClientCalculation = urlParams.get("calc") !== "server";
+      this.useClientCalculation = urlParams.get("calc") === "client";
       debugLogger.log(`Initialization: Using ${this.useClientCalculation ? "client-side" : "server-side"} calculation`, "info");
       this.init();
     }
@@ -2332,6 +2332,23 @@
       const data = await response.json();
       this.passesData = data;
       debugLogger.log(`Loaded ${data.total_passes} pre-calculated passes`, "info");
+      this.loadTLEDataInBackground();
+    }
+    async loadTLEDataInBackground() {
+      try {
+        debugLogger.log("Loading TLE data in background for real-time tracking...", "info");
+        if (!this.orbitManager) {
+          this.orbitManager = new OrbitManager();
+        }
+        await this.orbitManager.loadTLEData();
+        debugLogger.log("TLE data loaded, enabling real-time tracking", "info");
+        if (this.nextSatelliteName) {
+          this.startPositionTracking();
+        }
+      } catch (error) {
+        debugLogger.log("Failed to load TLE data for real-time tracking (continuing without it)", "warn");
+        console.warn("TLE data load failed:", error);
+      }
     }
     async loadAndCalculate() {
       debugLogger.log("Starting client-side orbit calculations...", "info");
@@ -2473,8 +2490,8 @@
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
         }
-        if (this.useClientCalculation && this.orbitManager) {
-          this.nextSatelliteName = next.satellite;
+        this.nextSatelliteName = next.satellite;
+        if (this.orbitManager) {
           this.startPositionTracking();
         }
       } else {

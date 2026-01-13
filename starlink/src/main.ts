@@ -57,9 +57,9 @@ class StarlinkPassTracker {
 
   constructor() {
     // Check URL parameter for calculation mode
-    // Default to client-side calculation, can override with ?calc=server
+    // Default to server-side (pre-calculated), can override with ?calc=client
     const urlParams = new URLSearchParams(window.location.search);
-    this.useClientCalculation = urlParams.get('calc') !== 'server';
+    this.useClientCalculation = urlParams.get('calc') === 'client';
 
     debugLogger.log(`Initialization: Using ${this.useClientCalculation ? 'client-side' : 'server-side'} calculation`, 'info');
     this.init();
@@ -96,6 +96,28 @@ class StarlinkPassTracker {
     const data: PassesData = await response.json();
     this.passesData = data;
     debugLogger.log(`Loaded ${data.total_passes} pre-calculated passes`, 'info');
+
+    // Load TLE data in background for real-time tracking
+    this.loadTLEDataInBackground();
+  }
+
+  private async loadTLEDataInBackground(): Promise<void> {
+    try {
+      debugLogger.log('Loading TLE data in background for real-time tracking...', 'info');
+      if (!this.orbitManager) {
+        this.orbitManager = new OrbitManager();
+      }
+      await this.orbitManager.loadTLEData();
+      debugLogger.log('TLE data loaded, enabling real-time tracking', 'info');
+
+      // Enable position tracking for the next satellite if available
+      if (this.nextSatelliteName) {
+        this.startPositionTracking();
+      }
+    } catch (error) {
+      debugLogger.log('Failed to load TLE data for real-time tracking (continuing without it)', 'warn');
+      console.warn('TLE data load failed:', error);
+    }
   }
 
   private async loadAndCalculate(): Promise<void> {
@@ -266,9 +288,9 @@ class StarlinkPassTracker {
         visibilityBadge.style.display = 'inline-block';
       }
 
-      // Start real-time position tracking if using client-side calculation
-      if (this.useClientCalculation && this.orbitManager) {
-        this.nextSatelliteName = next.satellite;
+      // Start real-time position tracking if orbit manager is available
+      this.nextSatelliteName = next.satellite;
+      if (this.orbitManager) {
         this.startPositionTracking();
       }
     } else {
