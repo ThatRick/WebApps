@@ -2299,9 +2299,46 @@
       this.useClientCalculation = false;
       this.nextSatelliteName = null;
       const urlParams = new URLSearchParams(window.location.search);
-      this.useClientCalculation = urlParams.get("calc") !== "server";
+      this.useClientCalculation = urlParams.get("calc") === "client";
       debugLogger.log(`Initialization: Using ${this.useClientCalculation ? "client-side" : "server-side"} calculation`, "info");
+      this.updateCalcModeBadge();
       this.init();
+    }
+    updateCalcModeBadge() {
+      const badge = document.getElementById("calc-mode-badge");
+      if (!badge)
+        return;
+      if (this.useClientCalculation) {
+        badge.className = "status-badge status-client";
+        badge.textContent = "\u2699\uFE0F Client";
+      } else {
+        badge.className = "status-badge status-server";
+        badge.textContent = "\u2699\uFE0F Palvelin";
+      }
+    }
+    updateTLEStatusBadge(status) {
+      const badge = document.getElementById("tle-status-badge");
+      if (!badge)
+        return;
+      if (status === "hidden") {
+        badge.style.display = "none";
+        return;
+      }
+      badge.style.display = "inline-flex";
+      switch (status) {
+        case "loading":
+          badge.className = "status-badge status-loading";
+          badge.textContent = "\u{1F4E1} Ladataan TLE...";
+          break;
+        case "ready":
+          badge.className = "status-badge status-ready";
+          badge.textContent = "\u2713 Reaaliaikainen seuranta";
+          break;
+        case "error":
+          badge.className = "status-badge status-error";
+          badge.textContent = "\u26A0\uFE0F TLE lataus ep\xE4onnistui";
+          break;
+      }
     }
     async init() {
       await this.loadPasses();
@@ -2332,6 +2369,26 @@
       const data = await response.json();
       this.passesData = data;
       debugLogger.log(`Loaded ${data.total_passes} pre-calculated passes`, "info");
+      this.loadTLEDataInBackground();
+    }
+    async loadTLEDataInBackground() {
+      try {
+        this.updateTLEStatusBadge("loading");
+        debugLogger.log("Loading TLE data in background for real-time tracking...", "info");
+        if (!this.orbitManager) {
+          this.orbitManager = new OrbitManager();
+        }
+        await this.orbitManager.loadTLEData();
+        debugLogger.log("TLE data loaded, enabling real-time tracking", "info");
+        this.updateTLEStatusBadge("ready");
+        if (this.nextSatelliteName) {
+          this.startPositionTracking();
+        }
+      } catch (error) {
+        debugLogger.log("Failed to load TLE data for real-time tracking (continuing without it)", "warn");
+        console.warn("TLE data load failed:", error);
+        this.updateTLEStatusBadge("error");
+      }
     }
     async loadAndCalculate() {
       debugLogger.log("Starting client-side orbit calculations...", "info");
@@ -2339,13 +2396,16 @@
       if (!this.orbitManager) {
         this.orbitManager = new OrbitManager();
       }
+      this.updateTLEStatusBadge("loading");
       debugLogger.log("Loading TLE dataset...", "info");
       try {
         await this.orbitManager.loadTLEData();
         debugLogger.log("TLE data loaded successfully", "info");
+        this.updateTLEStatusBadge("ready");
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         debugLogger.log(`Failed to load TLE data: ${errorMsg}`, "error");
+        this.updateTLEStatusBadge("error");
         throw error;
       }
       debugLogger.log("Calculating satellite passes...", "info");
@@ -2473,8 +2533,8 @@
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
         }
-        if (this.useClientCalculation && this.orbitManager) {
-          this.nextSatelliteName = next.satellite;
+        this.nextSatelliteName = next.satellite;
+        if (this.orbitManager) {
           this.startPositionTracking();
         }
       } else {
