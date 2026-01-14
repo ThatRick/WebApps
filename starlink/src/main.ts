@@ -418,11 +418,11 @@ class StarlinkPassTracker {
     const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
     if (!position) return;
 
-    // Always show current position section and update it
     const currentPosSection = document.getElementById('current-position-section');
     const currentElevEl = document.getElementById('current-elevation');
     const currentDistEl = document.getElementById('current-distance');
 
+    // Always show current position section
     if (currentPosSection) {
       currentPosSection.style.display = 'block';
     }
