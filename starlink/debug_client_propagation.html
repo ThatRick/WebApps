@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Client Propagation</title>
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+</head>
+<body>
+    <h1>Client-side Propagation Debug</h1>
+    <pre id="output"></pre>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(msg) {
+            output.textContent += msg + '\n';
+        }
+
+        // STARLINK-5619 TLE (from cache)
+        const tleLine1 = "1 56146U 23042AJ  26014.10146122  .00001305  00000-0  10866-3 0  9997";
+        const tleLine2 = "2 56146  43.0038 312.7625 0001169  85.1871 274.9339 15.02544395160327";
+
+        // Observer (Jyväskylä)
+        const observerLat = 62.2426 * Math.PI / 180;
+        const observerLon = 25.7473 * Math.PI / 180;
+        const observerAlt = 0.1; // km
+
+        log('='.repeat(70));
+        log('Testing satellite.js propagation');
+        log('='.repeat(70));
+        log('');
+
+        // Parse TLE
+        const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
+
+        if (satrec.error) {
+            log('ERROR: Failed to parse TLE, error code: ' + satrec.error);
+        } else {
+            log('✓ TLE parsed successfully');
+            log('');
+
+            // Test propagation at different times
+            const now = new Date();
+            log('Current time: ' + now.toISOString());
+            log('');
+            log('Time         Elev    Distance   Lat      Lon      Alt');
+            log('-'.repeat(70));
+
+            for (let mins = 0; mins <= 60; mins += 5) {
+                const testTime = new Date(now.getTime() + mins * 60 * 1000);
+
+                // Propagate
+                const posVel = satellite.propagate(satrec, testTime);
+
+                if (!posVel || !posVel.position) {
+                    log(`+${mins}min   ERROR: Propagation failed`);
+                    continue;
+                }
+
+                const posEci = posVel.position;
+
+                // Convert to geodetic
+                const gmst = satellite.gstime(testTime);
+                const posGd = satellite.eciToGeodetic(posEci, gmst);
+
+                const satLat = satellite.degreesLat(posGd.latitude);
+                const satLon = satellite.degreesLong(posGd.longitude);
+                const satAlt = posGd.height;
+
+                // Calculate observer position in ECEF
+                const obsGd = {
+                    latitude: observerLat,
+                    longitude: observerLon,
+                    height: observerAlt
+                };
+                const obsEcf = satellite.geodeticToEcf(obsGd);
+
+                // Convert satellite ECI to ECF
+                const satEcf = satellite.eciToEcf(posEci, gmst);
+
+                // Calculate look angles
+                const lookAngles = satellite.ecfToLookAngles(obsGd, satEcf);
+
+                const azimuth = lookAngles.azimuth * 180 / Math.PI;
+                const elevation = lookAngles.elevation * 180 / Math.PI;
+                const rangeSat = lookAngles.rangeSat; // km
+
+                const timeStr = `+${mins}min`.padEnd(12);
+                const elevStr = elevation.toFixed(1) + '°';
+                const distStr = rangeSat.toFixed(0) + ' km';
+                const latStr = satLat.toFixed(2) + '°';
+                const lonStr = satLon.toFixed(2) + '°';
+                const altStr = satAlt.toFixed(0) + ' km';
+
+                log(`${timeStr} ${elevStr.padEnd(7)} ${distStr.padEnd(10)} ${latStr.padEnd(8)} ${lonStr.padEnd(8)} ${altStr}`);
+            }
+        }
+
+        log('');
+        log('='.repeat(70));
+        log('Test complete');
+    </script>
+</body>
+</html>
