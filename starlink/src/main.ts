@@ -4,6 +4,7 @@
 
 import type { PassesData, PassCalculationProgress } from './types';
 import { OrbitManager } from './orbit/orbitManager';
+import { GlobeVisualization } from './visualization/globe';
 
 // Build timestamp - updated on each build
 const BUILD_TIME = new Date().toISOString();
@@ -54,6 +55,7 @@ class StarlinkPassTracker {
   private orbitManager: OrbitManager | null = null;
   private useClientCalculation: boolean = false;
   private nextSatelliteName: string | null = null;
+  private globeVisualization: GlobeVisualization | null = null;
 
   constructor() {
     // Check URL parameter for calculation mode
@@ -107,9 +109,57 @@ class StarlinkPassTracker {
   }
 
   private async init(): Promise<void> {
+    this.setupTabs();
     await this.loadPasses();
     // Refresh every 10 minutes
     setInterval(() => this.loadPasses(), 600000);
+  }
+
+  private setupTabs(): void {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.getAttribute('data-tab');
+        if (!tabName) return;
+
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.remove('active');
+        });
+
+        const activeContent = document.getElementById(`tab-${tabName}`);
+        if (activeContent) {
+          activeContent.classList.add('active');
+
+          // Initialize globe visualization when tab is first opened
+          if (tabName === 'globe' && !this.globeVisualization) {
+            this.initGlobeVisualization();
+          }
+        }
+      });
+    });
+  }
+
+  private initGlobeVisualization(): void {
+    try {
+      this.globeVisualization = new GlobeVisualization('globe-container');
+
+      // Set observer location (Jyväskylä)
+      if (this.passesData?.observer) {
+        this.globeVisualization.setObserver(
+          this.passesData.observer.latitude,
+          this.passesData.observer.longitude
+        );
+      }
+
+      debugLogger.log('3D Globe visualization initialized', 'info');
+    } catch (error) {
+      debugLogger.log(`Failed to initialize globe: ${error}`, 'error');
+    }
   }
 
   private async loadPasses(): Promise<void> {
@@ -436,6 +486,20 @@ class StarlinkPassTracker {
 
     if (currentDistEl) {
       currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+    }
+
+    // Update globe visualization
+    if (this.globeVisualization) {
+      this.globeVisualization.updateSatellite(position);
+
+      // Update globe info panel
+      const globeSatName = document.getElementById('globe-satellite-name');
+      const globeElev = document.getElementById('globe-elevation');
+      const globeDist = document.getElementById('globe-distance');
+
+      if (globeSatName) globeSatName.textContent = this.nextSatelliteName;
+      if (globeElev) globeElev.textContent = `Elevaatio: ${position.elevation.toFixed(1)}°`;
+      if (globeDist) globeDist.textContent = `Etäisyys: ${Math.round(position.distance)} km`;
     }
   }
 

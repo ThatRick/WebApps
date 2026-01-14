@@ -333,6 +333,70 @@
             text-decoration: underline;
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #globe-container {
+            width: 100%;
+            height: 600px;
+            background: #000510;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .globe-info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .globe-info div {
+            margin-bottom: 5px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 1.8rem;
@@ -448,7 +512,15 @@
         </div>
 
         <div id="content" style="display: none;">
-            <div id="next-pass" class="next-pass">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="overview">📊 Yhteenveto</button>
+                <button class="tab" data-tab="globe">🌍 3D Näkymä</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="tab-overview" class="tab-content active">
+                <div id="next-pass" class="next-pass">
                 <h2>Seuraava ylilento</h2>
                 <div class="satellite-name" id="next-satellite">-</div>
                 <div class="time" id="next-time">-</div>
@@ -510,6 +582,26 @@
         <div id="error" class="error" style="display: none;">
             <p>Ylilentotietojen lataus epäonnistui. Yritä päivittää sivu.</p>
         </div>
+
+            </div>
+            <!-- End Overview Tab -->
+
+            <!-- Globe Tab -->
+            <div id="tab-globe" class="tab-content">
+                <div id="globe-container">
+                    <div class="globe-info" id="globe-info">
+                        <div><strong>🌍 3D Maapallonäkymä</strong></div>
+                        <div id="globe-satellite-name">-</div>
+                        <div id="globe-elevation">Elevaatio: -</div>
+                        <div id="globe-distance">Etäisyys: -</div>
+                        <div style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">
+                            Hiiri: Pyöritä | Rulla: Zoom
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Globe Tab -->
+
     </div>
 
     <footer>
