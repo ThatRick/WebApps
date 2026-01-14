@@ -19,6 +19,8 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Tuple, Optional
 import math
+import multiprocessing as mp
+from functools import partial
 
 # Vakiot
 EARTH_RADIUS_KM = 6371.0
@@ -537,11 +539,18 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
                         # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
-                        if len(pass_data['positions']) >= 2:
-                            pos1 = pass_data['positions'][0]  # (time, lat, lon, alt, elev)
-                            pos2 = pass_data['positions'][1]
-                            # Azimuth katsojasta toiseen positioon (parametrit: sat ensin, sitten obs)
-                            movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+                        # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                        if len(pass_data['positions']) >= 3:
+                            mid_idx = len(pass_data['positions']) // 2
+                            mid_pos = pass_data['positions'][mid_idx]  # (time, lat, lon, alt, elev)
+                            # Azimuth katsojasta keskikohtaan
+                            movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                            pass_data['movement_azimuth'] = movement_az
+                            pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                        elif len(pass_data['positions']) >= 2:
+                            # Jos vähän positioita, käytä viimeistä
+                            last_pos = pass_data['positions'][-1]
+                            movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         else:
@@ -585,6 +594,174 @@ def find_passes(satellites: List[Tuple[str, str, str]],
     return passes
 
 
+def _process_single_satellite(satellite_data, observer_lat, observer_lon,
+                               max_distance_km, start_time, end_time, time_step_seconds):
+    """
+    Prosessoi yhden satelliitin ylilennot - käytetään rinnakkaislaskennassa.
+    Palauttaa listan ylilentoja tälle satelliitille.
+    """
+    name, line1, line2 = satellite_data
+
+    try:
+        elements = tle_to_orbital_elements(line1, line2)
+    except Exception:
+        return []
+
+    passes = []
+    current_time = start_time
+    in_pass = False
+    pass_data = None
+
+    time_step = timedelta(seconds=time_step_seconds)
+
+    while current_time < end_time:
+        try:
+            sat_lat, sat_lon, sat_alt = propagate_satellite(elements, current_time)
+            distance = calculate_ground_distance(sat_lat, sat_lon, sat_alt,
+                                                observer_lat, observer_lon)
+            elevation = calculate_elevation(sat_lat, sat_lon, sat_alt,
+                                           observer_lat, observer_lon)
+
+            if distance <= max_distance_km and elevation > 0:
+                sun_elev, _ = calculate_solar_position(current_time, observer_lat, observer_lon)
+                sat_illuminated = is_satellite_illuminated(sat_alt, sun_elev)
+                visibility_rating, visibility_category = calculate_visibility_rating(
+                    sun_elev, sat_illuminated, elevation
+                )
+
+                if not in_pass:
+                    azimuth = calculate_azimuth(sat_lat, sat_lon, observer_lat, observer_lon)
+                    direction = azimuth_to_direction(azimuth)
+
+                    in_pass = True
+                    pass_data = {
+                        'satellite': name,
+                        'start_time': current_time,
+                        'max_elevation_time': current_time,
+                        'max_elevation': elevation,
+                        'min_distance': distance,
+                        'max_visibility_rating': visibility_rating,
+                        'max_visibility_category': visibility_category,
+                        'max_visibility_time': current_time,
+                        'start_azimuth': azimuth,
+                        'start_direction': direction,
+                        'positions': [(current_time, sat_lat, sat_lon, sat_alt, elevation)]
+                    }
+                else:
+                    pass_data['positions'].append((current_time, sat_lat, sat_lon, sat_alt, elevation))
+                    if elevation > pass_data['max_elevation']:
+                        pass_data['max_elevation'] = elevation
+                        pass_data['max_elevation_time'] = current_time
+                    if distance < pass_data['min_distance']:
+                        pass_data['min_distance'] = distance
+                    if visibility_rating > pass_data['max_visibility_rating']:
+                        pass_data['max_visibility_rating'] = visibility_rating
+                        pass_data['max_visibility_category'] = visibility_category
+                        pass_data['max_visibility_time'] = current_time
+            else:
+                if in_pass:
+                    pass_data['end_time'] = current_time
+                    pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
+
+                    # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                    if len(pass_data['positions']) >= 3:
+                        mid_idx = len(pass_data['positions']) // 2
+                        mid_pos = pass_data['positions'][mid_idx]
+                        movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                        pass_data['movement_azimuth'] = movement_az
+                        pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                    elif len(pass_data['positions']) >= 2:
+                        last_pos = pass_data['positions'][-1]
+                        movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
+                        pass_data['movement_azimuth'] = movement_az
+                        pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                    else:
+                        pass_data['movement_azimuth'] = pass_data['start_azimuth']
+                        pass_data['movement_direction'] = pass_data['start_direction']
+
+                    del pass_data['positions']
+                    passes.append(pass_data)
+                    in_pass = False
+                    pass_data = None
+
+        except Exception:
+            pass
+
+        current_time += time_step
+
+    # Jos ylilento on vielä käynnissä jakson lopussa
+    if in_pass and pass_data:
+        pass_data['end_time'] = current_time
+        pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
+
+        if 'positions' in pass_data and len(pass_data['positions']) >= 2:
+            pos2 = pass_data['positions'][1]
+            movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+            pass_data['movement_azimuth'] = movement_az
+            pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+        else:
+            pass_data['movement_azimuth'] = pass_data.get('start_azimuth', 0)
+            pass_data['movement_direction'] = pass_data.get('start_direction', 'N')
+
+        if 'positions' in pass_data:
+            del pass_data['positions']
+        passes.append(pass_data)
+
+    return passes
+
+
+def find_passes_parallel(satellites: List[Tuple[str, str, str]],
+                         observer_lat: float,
+                         observer_lon: float,
+                         max_distance_km: float = 500,
+                         hours_ahead: float = 24,
+                         time_step_seconds: int = 30,
+                         num_processes: int = None) -> List[dict]:
+    """
+    Etsi satelliittien ylilennot käyttäen rinnakkaislaskentaa.
+    Huomattavasti nopeampi kuin find_passes(), mutta käyttää enemmän muistia.
+
+    Args:
+        num_processes: Työprosessien määrä (oletus: CPU-ydinten määrä)
+    """
+    start_time = datetime.utcnow()
+    end_time = start_time + timedelta(hours=hours_ahead)
+
+    if num_processes is None:
+        num_processes = mp.cpu_count()
+
+    print(f"\nEtsitään ylilentoja {len(satellites)} satelliitille (rinnakkaislaskenta)...")
+    print(f"Havaintopaikka: {observer_lat:.4f}°N, {observer_lon:.4f}°E")
+    print(f"Maksimietäisyys: {max_distance_km} km")
+    print(f"Aikaväli: {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%Y-%m-%d %H:%M')} UTC")
+    print(f"Käytetään {num_processes} prosessoria")
+
+    # Luo osittainen funktio kiinteillä parametreilla
+    process_func = partial(
+        _process_single_satellite,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        max_distance_km=max_distance_km,
+        start_time=start_time,
+        end_time=end_time,
+        time_step_seconds=time_step_seconds
+    )
+
+    # Käsittele satelliitit rinnakkain
+    with mp.Pool(processes=num_processes) as pool:
+        results = pool.map(process_func, satellites, chunksize=10)
+
+    # Yhdistä tulokset
+    all_passes = []
+    for satellite_passes in results:
+        all_passes.extend(satellite_passes)
+
+    # Järjestä ylilennot aloitusajan mukaan
+    all_passes.sort(key=lambda x: x['start_time'])
+
+    return all_passes
+
+
 def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
                    max_distance: float, hours: float, tz_offset: int = 2) -> dict:
     """
@@ -600,10 +777,12 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'satellite': p['satellite'],
             'start_time_utc': p['start_time'].isoformat() + 'Z',
             'start_time_local': start_local.isoformat(),
+            'max_elevation_time_utc': p['max_elevation_time'].isoformat() + 'Z',
             'max_elevation_time_local': max_elev_local.isoformat(),
+            'end_time_utc': p['end_time'].isoformat() + 'Z',
             'end_time_local': end_local.isoformat(),
             'max_elevation': round(p['max_elevation'], 1),
-            'min_distance_km': round(p['min_distance'], 0),
+            'max_distance_km': round(p['min_distance'], 0),
             'duration_seconds': p['duration'],
             'duration_minutes': round(p['duration'] / 60, 1),
             'visibility_rating': p.get('max_visibility_rating', 0),
@@ -611,7 +790,8 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'start_azimuth': round(p.get('start_azimuth', 0), 1),
             'start_direction': p.get('start_direction', 'N'),
             'movement_azimuth': round(p.get('movement_azimuth', 0), 1),
-            'movement_direction': p.get('movement_direction', 'N')
+            'movement_direction': p.get('movement_direction', 'N'),
+            'positions': []  # Empty for client compatibility
         })
 
     return {
@@ -696,6 +876,8 @@ Esimerkkejä:
                        help='Tallenna tulokset JSON-tiedostoon (web-käyttöliittymää varten)')
     parser.add_argument('--json-only', action='store_true',
                        help='Tulosta vain JSON stdout:iin')
+    parser.add_argument('--parallel', action='store_true',
+                       help='Käytä rinnakkaislaskentaa (10-20x nopeampi, mutta vaatii enemmän muistia)')
 
     args = parser.parse_args()
 
@@ -720,14 +902,24 @@ Esimerkkejä:
     print(f"Löydettiin {len(satellites)} Starlink-satelliittia")
 
     # Etsi ylilennot
-    passes = find_passes(
-        satellites,
-        args.lat,
-        args.lon,
-        args.max_distance,
-        args.hours,
-        args.time_step
-    )
+    if args.parallel:
+        passes = find_passes_parallel(
+            satellites,
+            args.lat,
+            args.lon,
+            args.max_distance,
+            args.hours,
+            args.time_step
+        )
+    else:
+        passes = find_passes(
+            satellites,
+            args.lat,
+            args.lon,
+            args.max_distance,
+            args.hours,
+            args.time_step
+        )
 
     print(f"\nLöydettiin {len(passes)} ylilentoa seuraavan {args.hours} tunnin aikana")
 

@@ -78,7 +78,8 @@ jobs:
             --tz 2 \
             --no-cache \
             --json docs/passes.json \
-            --top 5
+            --top 5 \
+            --parallel
 
       - name: Verify passes.json exists
         run: |

@@ -2116,20 +2116,18 @@
         this.observer.longitude
       );
       const startPosition = positions[0];
-      const secondPosition = positions[Math.min(1, positions.length - 1)];
       const startAzimuth = Math.round(startPosition.azimuth);
       const startDirection = azimuthToDirection(startAzimuth);
       let movementAzimuth;
       let movementDirection;
-      if (positions.length >= 2) {
-        movementAzimuth = Math.round(
-          calculateAzimuth(
-            secondPosition.latitude,
-            secondPosition.longitude,
-            startPosition.latitude,
-            startPosition.longitude
-          )
-        );
+      if (positions.length >= 3) {
+        const midIndex = Math.floor(positions.length / 2);
+        const midPosition = positions[midIndex];
+        movementAzimuth = Math.round(midPosition.azimuth);
+        movementDirection = azimuthToDirection(movementAzimuth);
+      } else if (positions.length >= 2) {
+        const lastPosition = positions[positions.length - 1];
+        movementAzimuth = Math.round(lastPosition.azimuth);
         movementDirection = azimuthToDirection(movementAzimuth);
       }
       const tzOffset = 2 * 60 * 60 * 1e3;
@@ -2532,6 +2530,15 @@
           const emoji = this.getVisibilityEmoji(category);
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
+        }
+        const elevationEl = document.getElementById("next-elevation");
+        const distanceEl = document.getElementById("next-distance");
+        if (elevationEl && next.max_elevation !== void 0) {
+          const elevClass = next.max_elevation < 30 ? "elevation-low" : next.max_elevation >= 60 ? "elevation-high" : "elevation-medium";
+          elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${next.max_elevation}\xB0</span>`;
+        }
+        if (distanceEl && next.max_distance_km !== void 0) {
+          distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${next.max_distance_km} km`;
         }
         this.nextSatelliteName = next.satellite;
         if (this.orbitManager) {
