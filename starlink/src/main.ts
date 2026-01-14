@@ -335,18 +335,18 @@ class StarlinkPassTracker {
         visibilityBadge.style.display = 'inline-block';
       }
 
-      // Show pass data (max elevation and max distance from pass calculation)
-      const elevationEl = document.getElementById('next-elevation');
-      const distanceEl = document.getElementById('next-distance');
+      // Show pass data (max elevation and closest distance from pass calculation)
+      const passMaxElevEl = document.getElementById('pass-max-elevation');
+      const passMinDistEl = document.getElementById('pass-min-distance');
 
-      if (elevationEl && next.max_elevation !== undefined) {
+      if (passMaxElevEl && next.max_elevation !== undefined) {
         const elevClass = next.max_elevation < 30 ? 'elevation-low' :
                          next.max_elevation >= 60 ? 'elevation-high' : 'elevation-medium';
-        elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${next.max_elevation}°</span>`;
+        passMaxElevEl.innerHTML = `📐 Max elevaatio: <span class="${elevClass}">${next.max_elevation}°</span>`;
       }
 
-      if (distanceEl && next.max_distance_km !== undefined) {
-        distanceEl.textContent = `📏 Etäisyys: ${next.max_distance_km} km`;
+      if (passMinDistEl && next.max_distance_km !== undefined) {
+        passMinDistEl.textContent = `📏 Lähin etäisyys: ${next.max_distance_km} km`;
       }
 
       // Start real-time position tracking if orbit manager is available
@@ -371,8 +371,11 @@ class StarlinkPassTracker {
     const movementEl = document.getElementById('next-movement');
     const countdownEl = document.getElementById('countdown');
     const visibilityEl = document.getElementById('next-visibility');
-    const elevationEl = document.getElementById('next-elevation');
-    const distanceEl = document.getElementById('next-distance');
+    const passMaxElevEl = document.getElementById('pass-max-elevation');
+    const passMinDistEl = document.getElementById('pass-min-distance');
+    const currentPosSection = document.getElementById('current-position-section');
+    const currentElevEl = document.getElementById('current-elevation');
+    const currentDistEl = document.getElementById('current-distance');
 
     if (satelliteEl) satelliteEl.textContent = 'Ei tulevia ylilentoja';
     if (timeEl) timeEl.textContent = '-';
@@ -380,8 +383,11 @@ class StarlinkPassTracker {
     if (movementEl) movementEl.textContent = '';
     if (countdownEl) countdownEl.textContent = '';
     if (visibilityEl) visibilityEl.style.display = 'none';
-    if (elevationEl) elevationEl.textContent = '';
-    if (distanceEl) distanceEl.textContent = '';
+    if (passMaxElevEl) passMaxElevEl.textContent = '';
+    if (passMinDistEl) passMinDistEl.textContent = '';
+    if (currentElevEl) currentElevEl.textContent = '';
+    if (currentDistEl) currentDistEl.textContent = '';
+    if (currentPosSection) currentPosSection.style.display = 'none';
 
     // Stop position tracking
     if (this.positionInterval !== null) {
@@ -412,21 +418,24 @@ class StarlinkPassTracker {
     const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
     if (!position) return;
 
-    // Only update display with real-time position if satellite is visible (elevation > 0)
-    // Otherwise keep showing the pass data (max elevation/distance)
-    if (position.elevation > 0) {
-      const elevationEl = document.getElementById('next-elevation');
-      const distanceEl = document.getElementById('next-distance');
+    // Always show current position section and update it
+    const currentPosSection = document.getElementById('current-position-section');
+    const currentElevEl = document.getElementById('current-elevation');
+    const currentDistEl = document.getElementById('current-distance');
 
-      if (elevationEl) {
-        const elevClass = position.elevation >= 60 ? 'elevation-high' :
-                         position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
-        elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span> <span class="text-secondary">(live)</span>`;
-      }
+    if (currentPosSection) {
+      currentPosSection.style.display = 'block';
+    }
 
-      if (distanceEl) {
-        distanceEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
-      }
+    if (currentElevEl) {
+      const elevClass = position.elevation < 0 ? 'text-secondary' :
+                       position.elevation >= 60 ? 'elevation-high' :
+                       position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+      currentElevEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
+    }
+
+    if (currentDistEl) {
+      currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
     }
   }
 
