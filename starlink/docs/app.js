@@ -2599,14 +2599,16 @@
       const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
       if (!position)
         return;
-      const elevationEl = document.getElementById("next-elevation");
-      const distanceEl = document.getElementById("next-distance");
-      if (elevationEl) {
-        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
-        elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
-      }
-      if (distanceEl) {
-        distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
+      if (position.elevation > 0) {
+        const elevationEl = document.getElementById("next-elevation");
+        const distanceEl = document.getElementById("next-distance");
+        if (elevationEl) {
+          const elevClass = position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
+          elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span> <span class="text-secondary">(live)</span>`;
+        }
+        if (distanceEl) {
+          distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
+        }
       }
     }
     displayPassesTable() {

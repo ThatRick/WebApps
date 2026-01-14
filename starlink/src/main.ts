@@ -412,18 +412,21 @@ class StarlinkPassTracker {
     const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
     if (!position) return;
 
-    const elevationEl = document.getElementById('next-elevation');
-    const distanceEl = document.getElementById('next-distance');
+    // Only update display with real-time position if satellite is visible (elevation > 0)
+    // Otherwise keep showing the pass data (max elevation/distance)
+    if (position.elevation > 0) {
+      const elevationEl = document.getElementById('next-elevation');
+      const distanceEl = document.getElementById('next-distance');
 
-    if (elevationEl) {
-      const elevClass = position.elevation < 0 ? 'text-secondary' :
-                       position.elevation >= 60 ? 'elevation-high' :
-                       position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
-      elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
-    }
+      if (elevationEl) {
+        const elevClass = position.elevation >= 60 ? 'elevation-high' :
+                         position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+        elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span> <span class="text-secondary">(live)</span>`;
+      }
 
-    if (distanceEl) {
-      distanceEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+      if (distanceEl) {
+        distanceEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+      }
     }
   }
 
