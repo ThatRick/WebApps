@@ -2531,14 +2531,14 @@
           visibilityBadge.textContent = `${emoji} N\xE4kyvyys: ${next.visibility_category}`;
           visibilityBadge.style.display = "inline-block";
         }
-        const elevationEl = document.getElementById("next-elevation");
-        const distanceEl = document.getElementById("next-distance");
-        if (elevationEl && next.max_elevation !== void 0) {
+        const passMaxElevEl = document.getElementById("pass-max-elevation");
+        const passMinDistEl = document.getElementById("pass-min-distance");
+        if (passMaxElevEl && next.max_elevation !== void 0) {
           const elevClass = next.max_elevation < 30 ? "elevation-low" : next.max_elevation >= 60 ? "elevation-high" : "elevation-medium";
-          elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${next.max_elevation}\xB0</span>`;
+          passMaxElevEl.innerHTML = `\u{1F4D0} Max elevaatio: <span class="${elevClass}">${next.max_elevation}\xB0</span>`;
         }
-        if (distanceEl && next.max_distance_km !== void 0) {
-          distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${next.max_distance_km} km`;
+        if (passMinDistEl && next.max_distance_km !== void 0) {
+          passMinDistEl.textContent = `\u{1F4CF} L\xE4hin et\xE4isyys: ${next.max_distance_km} km`;
         }
         this.nextSatelliteName = next.satellite;
         if (this.orbitManager) {
@@ -2560,8 +2560,11 @@
       const movementEl = document.getElementById("next-movement");
       const countdownEl = document.getElementById("countdown");
       const visibilityEl = document.getElementById("next-visibility");
-      const elevationEl = document.getElementById("next-elevation");
-      const distanceEl = document.getElementById("next-distance");
+      const passMaxElevEl = document.getElementById("pass-max-elevation");
+      const passMinDistEl = document.getElementById("pass-min-distance");
+      const currentPosSection = document.getElementById("current-position-section");
+      const currentElevEl = document.getElementById("current-elevation");
+      const currentDistEl = document.getElementById("current-distance");
       if (satelliteEl)
         satelliteEl.textContent = "Ei tulevia ylilentoja";
       if (timeEl)
@@ -2574,10 +2577,16 @@
         countdownEl.textContent = "";
       if (visibilityEl)
         visibilityEl.style.display = "none";
-      if (elevationEl)
-        elevationEl.textContent = "";
-      if (distanceEl)
-        distanceEl.textContent = "";
+      if (passMaxElevEl)
+        passMaxElevEl.textContent = "";
+      if (passMinDistEl)
+        passMinDistEl.textContent = "";
+      if (currentElevEl)
+        currentElevEl.textContent = "";
+      if (currentDistEl)
+        currentDistEl.textContent = "";
+      if (currentPosSection)
+        currentPosSection.style.display = "none";
       if (this.positionInterval !== null) {
         clearInterval(this.positionInterval);
         this.positionInterval = null;
@@ -2599,14 +2608,18 @@
       const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
       if (!position)
         return;
-      const elevationEl = document.getElementById("next-elevation");
-      const distanceEl = document.getElementById("next-distance");
-      if (elevationEl) {
-        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
-        elevationEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
+      const currentPosSection = document.getElementById("current-position-section");
+      const currentElevEl = document.getElementById("current-elevation");
+      const currentDistEl = document.getElementById("current-distance");
+      if (currentPosSection) {
+        currentPosSection.style.display = "block";
       }
-      if (distanceEl) {
-        distanceEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
+      if (currentElevEl) {
+        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
+        currentElevEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
+      }
+      if (currentDistEl) {
+        currentDistEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
       }
     }
     displayPassesTable() {
