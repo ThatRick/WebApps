@@ -4,6 +4,11 @@ starlink_tle_cache.txt
 # Output files
 starlink_passes_*.txt
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 # Node modules and build artifacts
 node_modules/
 dist/
