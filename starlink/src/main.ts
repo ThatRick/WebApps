@@ -335,6 +335,20 @@ class StarlinkPassTracker {
         visibilityBadge.style.display = 'inline-block';
       }
 
+      // Show pass data (max elevation and max distance from pass calculation)
+      const elevationEl = document.getElementById('next-elevation');
+      const distanceEl = document.getElementById('next-distance');
+
+      if (elevationEl && next.max_elevation !== undefined) {
+        const elevClass = next.max_elevation < 30 ? 'elevation-low' :
+                         next.max_elevation >= 60 ? 'elevation-high' : 'elevation-medium';
+        elevationEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${next.max_elevation}°</span>`;
+      }
+
+      if (distanceEl && next.max_distance_km !== undefined) {
+        distanceEl.textContent = `📏 Etäisyys: ${next.max_distance_km} km`;
+      }
+
       // Start real-time position tracking if orbit manager is available
       this.nextSatelliteName = next.satellite;
       if (this.orbitManager) {

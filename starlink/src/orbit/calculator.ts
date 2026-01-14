@@ -4,7 +4,7 @@
  */
 
 import { SatellitePropagator } from './propagator';
-import { azimuthToDirection, calculateAzimuth } from './coordinates';
+import { azimuthToDirection } from './coordinates';
 import type {
   TLEData,
   SatellitePass,
@@ -229,24 +229,24 @@ export class PassCalculator {
 
     // Get start and movement directions
     const startPosition = positions[0];
-    const secondPosition = positions[Math.min(1, positions.length - 1)];
 
     const startAzimuth = Math.round(startPosition.azimuth);
     const startDirection = azimuthToDirection(startAzimuth);
 
-    // Calculate movement direction from first two positions
+    // Calculate movement direction using middle position for clearer distinction
     let movementAzimuth: number | undefined;
     let movementDirection: string | undefined;
 
-    if (positions.length >= 2) {
-      movementAzimuth = Math.round(
-        calculateAzimuth(
-          secondPosition.latitude,
-          secondPosition.longitude,
-          startPosition.latitude,
-          startPosition.longitude
-        )
-      );
+    if (positions.length >= 3) {
+      // Use middle position to get clear movement direction
+      const midIndex = Math.floor(positions.length / 2);
+      const midPosition = positions[midIndex];
+      movementAzimuth = Math.round(midPosition.azimuth);
+      movementDirection = azimuthToDirection(movementAzimuth);
+    } else if (positions.length >= 2) {
+      // Use last position if only a few positions
+      const lastPosition = positions[positions.length - 1];
+      movementAzimuth = Math.round(lastPosition.azimuth);
       movementDirection = azimuthToDirection(movementAzimuth);
     }
 

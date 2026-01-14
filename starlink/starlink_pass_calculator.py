@@ -539,11 +539,18 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
                         # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
-                        if len(pass_data['positions']) >= 2:
-                            pos1 = pass_data['positions'][0]  # (time, lat, lon, alt, elev)
-                            pos2 = pass_data['positions'][1]
-                            # Azimuth katsojasta toiseen positioon (parametrit: sat ensin, sitten obs)
-                            movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+                        # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                        if len(pass_data['positions']) >= 3:
+                            mid_idx = len(pass_data['positions']) // 2
+                            mid_pos = pass_data['positions'][mid_idx]  # (time, lat, lon, alt, elev)
+                            # Azimuth katsojasta keskikohtaan
+                            movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                            pass_data['movement_azimuth'] = movement_az
+                            pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                        elif len(pass_data['positions']) >= 2:
+                            # Jos vähän positioita, käytä viimeistä
+                            last_pos = pass_data['positions'][-1]
+                            movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         else:
@@ -656,9 +663,16 @@ def _process_single_satellite(satellite_data, observer_lat, observer_lon,
                     pass_data['end_time'] = current_time
                     pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-                    if len(pass_data['positions']) >= 2:
-                        pos2 = pass_data['positions'][1]
-                        movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+                    # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                    if len(pass_data['positions']) >= 3:
+                        mid_idx = len(pass_data['positions']) // 2
+                        mid_pos = pass_data['positions'][mid_idx]
+                        movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                        pass_data['movement_azimuth'] = movement_az
+                        pass_data['movement_direction'] = azimuth_to_direction(movement_az)
+                    elif len(pass_data['positions']) >= 2:
+                        last_pos = pass_data['positions'][-1]
+                        movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
                         pass_data['movement_azimuth'] = movement_az
                         pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                     else:
@@ -763,10 +777,12 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'satellite': p['satellite'],
             'start_time_utc': p['start_time'].isoformat() + 'Z',
             'start_time_local': start_local.isoformat(),
+            'max_elevation_time_utc': p['max_elevation_time'].isoformat() + 'Z',
             'max_elevation_time_local': max_elev_local.isoformat(),
+            'end_time_utc': p['end_time'].isoformat() + 'Z',
             'end_time_local': end_local.isoformat(),
             'max_elevation': round(p['max_elevation'], 1),
-            'min_distance_km': round(p['min_distance'], 0),
+            'max_distance_km': round(p['min_distance'], 0),
             'duration_seconds': p['duration'],
             'duration_minutes': round(p['duration'] / 60, 1),
             'visibility_rating': p.get('max_visibility_rating', 0),
@@ -774,7 +790,8 @@ def passes_to_json(passes: List[dict], observer_lat: float, observer_lon: float,
             'start_azimuth': round(p.get('start_azimuth', 0), 1),
             'start_direction': p.get('start_direction', 'N'),
             'movement_azimuth': round(p.get('movement_azimuth', 0), 1),
-            'movement_direction': p.get('movement_direction', 'N')
+            'movement_direction': p.get('movement_direction', 'N'),
+            'positions': []  # Empty for client compatibility
         })
 
     return {
