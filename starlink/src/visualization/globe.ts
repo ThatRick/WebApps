@@ -354,8 +354,8 @@ export class GlobeVisualization {
     this.camera.position.z = radius * Math.cos(this.rotationY) * Math.cos(this.rotationX);
     this.camera.lookAt(0, 0, 0);
 
-    // Rotate Earth slowly
-    this.earth.rotation.y += 0.001;
+    // Note: Earth rotation is removed because satellite positions are in geodetic (Earth-fixed) coordinates
+    // If we rotate the Earth, satellites would appear to move with it
 
     this.renderer.render(this.scene, this.camera);
   }
