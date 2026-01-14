@@ -22,6 +22,7 @@ export class GlobeVisualization {
   private targetRotationY: number = 0;
   private rotationX: number = 0;
   private rotationY: number = 0;
+  private lastTouchDistance: number = 0;
 
   constructor(containerId: string) {
     const container = document.getElementById(containerId);
@@ -59,8 +60,8 @@ export class GlobeVisualization {
     // Add stars
     this.addStars();
 
-    // Setup mouse controls
-    this.setupMouseControls();
+    // Setup mouse and touch controls
+    this.setupControls();
 
     // Handle window resize
     window.addEventListener('resize', () => this.onWindowResize());
@@ -169,9 +170,10 @@ export class GlobeVisualization {
     this.scene.add(stars);
   }
 
-  private setupMouseControls(): void {
+  private setupControls(): void {
     const canvas = this.renderer.domElement;
 
+    // Mouse controls
     canvas.addEventListener('mousedown', (e) => {
       this.mouseDown = true;
       this.mouseX = e.clientX;
@@ -204,6 +206,63 @@ export class GlobeVisualization {
       e.preventDefault();
       const delta = e.deltaY * 0.01;
       this.camera.position.z = Math.max(8, Math.min(30, this.camera.position.z + delta));
+    });
+
+    // Touch controls
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1) {
+        // Single touch - rotation
+        this.mouseDown = true;
+        this.mouseX = e.touches[0].clientX;
+        this.mouseY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        // Two finger touch - prepare for pinch zoom
+        this.mouseDown = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1 && this.mouseDown) {
+        // Single touch drag - rotation
+        const deltaX = e.touches[0].clientX - this.mouseX;
+        const deltaY = e.touches[0].clientY - this.mouseY;
+
+        this.targetRotationX += deltaY * 0.01;
+        this.targetRotationY += deltaX * 0.01;
+
+        this.mouseX = e.touches[0].clientX;
+        this.mouseY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        // Pinch zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (this.lastTouchDistance > 0) {
+          const delta = (this.lastTouchDistance - distance) * 0.05;
+          this.camera.position.z = Math.max(8, Math.min(30, this.camera.position.z + delta));
+        }
+
+        this.lastTouchDistance = distance;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      this.mouseDown = false;
+      this.lastTouchDistance = 0;
+    }, { passive: false });
+
+    canvas.addEventListener('touchcancel', () => {
+      this.mouseDown = false;
+      this.lastTouchDistance = 0;
     });
   }
 

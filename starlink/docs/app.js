@@ -29511,6 +29511,7 @@ void main() {
       this.targetRotationY = 0;
       this.rotationX = 0;
       this.rotationY = 0;
+      this.lastTouchDistance = 0;
       const container = document.getElementById(containerId);
       if (!container) {
         throw new Error(`Container ${containerId} not found`);
@@ -29533,7 +29534,7 @@ void main() {
       this.scene.add(this.earth);
       this.addLights();
       this.addStars();
-      this.setupMouseControls();
+      this.setupControls();
       window.addEventListener("resize", () => this.onWindowResize());
       this.animate();
     }
@@ -29614,7 +29615,7 @@ void main() {
       const stars = new Points(starsGeometry, starsMaterial);
       this.scene.add(stars);
     }
-    setupMouseControls() {
+    setupControls() {
       const canvas = this.renderer.domElement;
       canvas.addEventListener("mousedown", (e) => {
         this.mouseDown = true;
@@ -29641,6 +29642,48 @@ void main() {
         e.preventDefault();
         const delta = e.deltaY * 0.01;
         this.camera.position.z = Math.max(8, Math.min(30, this.camera.position.z + delta));
+      });
+      canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          this.mouseDown = true;
+          this.mouseX = e.touches[0].clientX;
+          this.mouseY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          this.mouseDown = false;
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+        }
+      }, { passive: false });
+      canvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1 && this.mouseDown) {
+          const deltaX = e.touches[0].clientX - this.mouseX;
+          const deltaY = e.touches[0].clientY - this.mouseY;
+          this.targetRotationX += deltaY * 0.01;
+          this.targetRotationY += deltaX * 0.01;
+          this.mouseX = e.touches[0].clientX;
+          this.mouseY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (this.lastTouchDistance > 0) {
+            const delta = (this.lastTouchDistance - distance) * 0.05;
+            this.camera.position.z = Math.max(8, Math.min(30, this.camera.position.z + delta));
+          }
+          this.lastTouchDistance = distance;
+        }
+      }, { passive: false });
+      canvas.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        this.mouseDown = false;
+        this.lastTouchDistance = 0;
+      }, { passive: false });
+      canvas.addEventListener("touchcancel", () => {
+        this.mouseDown = false;
+        this.lastTouchDistance = 0;
       });
     }
     /**

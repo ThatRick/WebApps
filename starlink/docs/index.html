@@ -378,6 +378,9 @@
             border-radius: 15px;
             overflow: hidden;
             position: relative;
+            touch-action: none; /* Disable default touch behaviors */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .globe-info {
@@ -414,6 +417,28 @@
 
             .next-pass .time {
                 font-size: 1.5rem;
+            }
+
+            #globe-container {
+                height: 400px; /* Smaller height on mobile */
+            }
+
+            .globe-info {
+                font-size: 0.8rem;
+                padding: 10px;
+            }
+
+            .tab {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+
+            .globe-controls-desktop {
+                display: none !important;
+            }
+
+            .globe-controls-mobile {
+                display: block !important;
             }
         }
 
@@ -594,8 +619,11 @@
                         <div id="globe-satellite-name">-</div>
                         <div id="globe-elevation">Elevaatio: -</div>
                         <div id="globe-distance">Etäisyys: -</div>
-                        <div style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">
-                            Hiiri: Pyöritä | Rulla: Zoom
+                        <div class="globe-controls-desktop" style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">
+                            🖱️ Vedä: Pyöritä | Rulla: Zoom
+                        </div>
+                        <div class="globe-controls-mobile" style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7; display: none;">
+                            👆 Vedä: Pyöritä | 🤏 Nipistä: Zoom
                         </div>
                     </div>
                 </div>
