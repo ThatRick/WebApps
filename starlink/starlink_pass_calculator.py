@@ -500,7 +500,7 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                     )
 
                     if not in_pass:
-                        # Ylilento alkaa - laske atsimuutti (suuntakulma)
+                        # Ylilento alkaa - laske atsimuutti (suuntakulma katsojasta satelliittiin)
                         azimuth = calculate_azimuth(sat_lat, sat_lon, observer_lat, observer_lon)
                         direction = azimuth_to_direction(azimuth)
 
@@ -536,12 +536,12 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         pass_data['end_time'] = current_time
                         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-                        # Laske satelliitin kulkusuunta (movement direction) kahdesta ensimmäisestä positiosta
+                        # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
                         if len(pass_data['positions']) >= 2:
                             pos1 = pass_data['positions'][0]  # (time, lat, lon, alt, elev)
                             pos2 = pass_data['positions'][1]
-                            # Laske suunta FROM pos1 TO pos2 (ei toisinpäin!)
-                            movement_az = calculate_azimuth(pos1[1], pos1[2], pos2[1], pos2[2])
+                            # Azimuth katsojasta toiseen positioon (parametrit: sat ensin, sitten obs)
+                            movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         else:
@@ -563,12 +563,12 @@ def find_passes(satellites: List[Tuple[str, str, str]],
             pass_data['end_time'] = current_time
             pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-            # Laske kulkusuunta
+            # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
             if 'positions' in pass_data and len(pass_data['positions']) >= 2:
                 pos1 = pass_data['positions'][0]
                 pos2 = pass_data['positions'][1]
-                # Laske suunta FROM pos1 TO pos2 (ei toisinpäin!)
-                movement_az = calculate_azimuth(pos1[1], pos1[2], pos2[1], pos2[2])
+                # Azimuth katsojasta toiseen positioon (parametrit: sat ensin, sitten obs)
+                movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
                 pass_data['movement_azimuth'] = movement_az
                 pass_data['movement_direction'] = azimuth_to_direction(movement_az)
             else:
