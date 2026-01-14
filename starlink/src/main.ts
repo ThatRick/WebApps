@@ -54,7 +54,6 @@ class StarlinkPassTracker {
   private orbitManager: OrbitManager | null = null;
   private useClientCalculation: boolean = false;
   private nextSatelliteName: string | null = null;
-  private nextPassStartTime: Date | null = null;
 
   constructor() {
     // Check URL parameter for calculation mode
@@ -352,7 +351,6 @@ class StarlinkPassTracker {
 
       // Start real-time position tracking if orbit manager is available
       this.nextSatelliteName = next.satellite;
-      this.nextPassStartTime = new Date(next.start_time_utc);
       if (this.orbitManager) {
         this.startPositionTracking();
       }
@@ -397,7 +395,6 @@ class StarlinkPassTracker {
       this.positionInterval = null;
     }
     this.nextSatelliteName = null;
-    this.nextPassStartTime = null;
   }
 
   private startPositionTracking(): void {
@@ -416,7 +413,7 @@ class StarlinkPassTracker {
   }
 
   private updateSatellitePosition(): void {
-    if (!this.orbitManager || !this.nextSatelliteName || !this.nextPassStartTime) return;
+    if (!this.orbitManager || !this.nextSatelliteName) return;
 
     const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
     if (!position) return;
@@ -425,28 +422,20 @@ class StarlinkPassTracker {
     const currentElevEl = document.getElementById('current-elevation');
     const currentDistEl = document.getElementById('current-distance');
 
-    // Only show current position if:
-    // 1. Satellite is visible (elevation > 0), OR
-    // 2. Within 10 minutes of the pass start time
-    const now = new Date();
-    const minutesUntilPass = (this.nextPassStartTime.getTime() - now.getTime()) / (1000 * 60);
-    const shouldShowPosition = position.elevation > 0 || (minutesUntilPass > 0 && minutesUntilPass <= 10);
-
+    // Always show current position section
     if (currentPosSection) {
-      currentPosSection.style.display = shouldShowPosition ? 'block' : 'none';
+      currentPosSection.style.display = 'block';
     }
 
-    if (shouldShowPosition) {
-      if (currentElevEl) {
-        const elevClass = position.elevation < 0 ? 'text-secondary' :
-                         position.elevation >= 60 ? 'elevation-high' :
-                         position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
-        currentElevEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
-      }
+    if (currentElevEl) {
+      const elevClass = position.elevation < 0 ? 'text-secondary' :
+                       position.elevation >= 60 ? 'elevation-high' :
+                       position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+      currentElevEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
+    }
 
-      if (currentDistEl) {
-        currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
-      }
+    if (currentDistEl) {
+      currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
     }
   }
 

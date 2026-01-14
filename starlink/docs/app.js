@@ -2296,7 +2296,6 @@
       this.orbitManager = null;
       this.useClientCalculation = false;
       this.nextSatelliteName = null;
-      this.nextPassStartTime = null;
       const urlParams = new URLSearchParams(window.location.search);
       this.useClientCalculation = urlParams.get("calc") === "client";
       debugLogger.log(`Initialization: Using ${this.useClientCalculation ? "client-side" : "server-side"} calculation`, "info");
@@ -2542,7 +2541,6 @@
           passMinDistEl.textContent = `\u{1F4CF} L\xE4hin et\xE4isyys: ${next.max_distance_km} km`;
         }
         this.nextSatelliteName = next.satellite;
-        this.nextPassStartTime = new Date(next.start_time_utc);
         if (this.orbitManager) {
           this.startPositionTracking();
         }
@@ -2594,7 +2592,6 @@
         this.positionInterval = null;
       }
       this.nextSatelliteName = null;
-      this.nextPassStartTime = null;
     }
     startPositionTracking() {
       if (this.positionInterval !== null) {
@@ -2606,7 +2603,7 @@
       }, 1e3);
     }
     updateSatellitePosition() {
-      if (!this.orbitManager || !this.nextSatelliteName || !this.nextPassStartTime)
+      if (!this.orbitManager || !this.nextSatelliteName)
         return;
       const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
       if (!position)
@@ -2614,20 +2611,15 @@
       const currentPosSection = document.getElementById("current-position-section");
       const currentElevEl = document.getElementById("current-elevation");
       const currentDistEl = document.getElementById("current-distance");
-      const now = /* @__PURE__ */ new Date();
-      const minutesUntilPass = (this.nextPassStartTime.getTime() - now.getTime()) / (1e3 * 60);
-      const shouldShowPosition = position.elevation > 0 || minutesUntilPass > 0 && minutesUntilPass <= 10;
       if (currentPosSection) {
-        currentPosSection.style.display = shouldShowPosition ? "block" : "none";
+        currentPosSection.style.display = "block";
       }
-      if (shouldShowPosition) {
-        if (currentElevEl) {
-          const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
-          currentElevEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
-        }
-        if (currentDistEl) {
-          currentDistEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
-        }
+      if (currentElevEl) {
+        const elevClass = position.elevation < 0 ? "text-secondary" : position.elevation >= 60 ? "elevation-high" : position.elevation >= 30 ? "elevation-medium" : "elevation-low";
+        currentElevEl.innerHTML = `\u{1F4D0} Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}\xB0</span>`;
+      }
+      if (currentDistEl) {
+        currentDistEl.textContent = `\u{1F4CF} Et\xE4isyys: ${Math.round(position.distance)} km`;
       }
     }
     displayPassesTable() {
