@@ -55,6 +55,7 @@ class StarlinkPassTracker {
   private orbitManager: OrbitManager | null = null;
   private useClientCalculation: boolean = false;
   private nextSatelliteName: string | null = null;
+  private nextPassStartTime: Date | null = null;
   private globeVisualization: GlobeVisualization | null = null;
 
   constructor() {
@@ -401,6 +402,7 @@ class StarlinkPassTracker {
 
       // Start real-time position tracking if orbit manager is available
       this.nextSatelliteName = next.satellite;
+      this.nextPassStartTime = new Date(next.start_time_utc);
       if (this.orbitManager) {
         this.startPositionTracking();
       }
@@ -445,6 +447,7 @@ class StarlinkPassTracker {
       this.positionInterval = null;
     }
     this.nextSatelliteName = null;
+    this.nextPassStartTime = null;
   }
 
   private startPositionTracking(): void {
@@ -463,7 +466,7 @@ class StarlinkPassTracker {
   }
 
   private updateSatellitePosition(): void {
-    if (!this.orbitManager || !this.nextSatelliteName) return;
+    if (!this.orbitManager || !this.nextSatelliteName || !this.nextPassStartTime) return;
 
     const position = this.orbitManager.getSatellitePosition(this.nextSatelliteName);
     if (!position) return;
@@ -472,20 +475,26 @@ class StarlinkPassTracker {
     const currentElevEl = document.getElementById('current-elevation');
     const currentDistEl = document.getElementById('current-distance');
 
-    // Always show current position section
+    // Only show current position when satellite is approaching (within 15 minutes of pass start)
+    const now = new Date();
+    const minutesUntilPass = (this.nextPassStartTime.getTime() - now.getTime()) / 1000 / 60;
+    const shouldShowPosition = minutesUntilPass <= 15 && minutesUntilPass >= -5; // Show from 15min before until 5min after start
+
     if (currentPosSection) {
-      currentPosSection.style.display = 'block';
+      currentPosSection.style.display = shouldShowPosition ? 'block' : 'none';
     }
 
-    if (currentElevEl) {
-      const elevClass = position.elevation < 0 ? 'text-secondary' :
-                       position.elevation >= 60 ? 'elevation-high' :
-                       position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
-      currentElevEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
-    }
+    if (shouldShowPosition) {
+      if (currentElevEl) {
+        const elevClass = position.elevation < 0 ? 'text-secondary' :
+                         position.elevation >= 60 ? 'elevation-high' :
+                         position.elevation >= 30 ? 'elevation-medium' : 'elevation-low';
+        currentElevEl.innerHTML = `📐 Elevaatio: <span class="${elevClass}">${position.elevation.toFixed(1)}°</span>`;
+      }
 
-    if (currentDistEl) {
-      currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+      if (currentDistEl) {
+        currentDistEl.textContent = `📏 Etäisyys: ${Math.round(position.distance)} km`;
+      }
     }
 
     // Update globe visualization
