@@ -29749,7 +29749,6 @@ void main() {
       this.camera.position.y = radius * Math.sin(this.rotationX);
       this.camera.position.z = radius * Math.cos(this.rotationY) * Math.cos(this.rotationX);
       this.camera.lookAt(0, 0, 0);
-      this.earth.rotation.y += 1e-3;
       this.renderer.render(this.scene, this.camera);
     }
     onWindowResize() {
