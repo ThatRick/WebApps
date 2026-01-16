@@ -538,19 +538,22 @@ def find_passes(satellites: List[Tuple[str, str, str]],
                         pass_data['end_time'] = current_time
                         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-                        # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
-                        # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                        # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu
+                        # Laske azimuth kahdesta peräkkäisestä positiosta saadaksemme todellisen liikesuunnan
                         if len(pass_data['positions']) >= 3:
                             mid_idx = len(pass_data['positions']) // 2
-                            mid_pos = pass_data['positions'][mid_idx]  # (time, lat, lon, alt, elev)
-                            # Azimuth katsojasta keskikohtaan
-                            movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                            # Ota kaksi peräkkäistä positiota keskeltä ylilentoa
+                            pos1 = pass_data['positions'][mid_idx - 1]  # (time, lat, lon, alt, elev)
+                            pos2 = pass_data['positions'][mid_idx + 1]
+                            # Laske azimuth FROM pos1 TO pos2 = todellinen liikesuunta
+                            movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         elif len(pass_data['positions']) >= 2:
-                            # Jos vähän positioita, käytä viimeistä
-                            last_pos = pass_data['positions'][-1]
-                            movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
+                            # Käytä ensimmäistä ja viimeistä positiota
+                            pos1 = pass_data['positions'][0]
+                            pos2 = pass_data['positions'][-1]
+                            movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
                             pass_data['movement_azimuth'] = movement_az
                             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                         else:
@@ -572,12 +575,12 @@ def find_passes(satellites: List[Tuple[str, str, str]],
             pass_data['end_time'] = current_time
             pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-            # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu katsojasta nähtynä
+            # Laske kulkusuunta: mihin suuntaan satelliitti liikkuu
             if 'positions' in pass_data and len(pass_data['positions']) >= 2:
                 pos1 = pass_data['positions'][0]
-                pos2 = pass_data['positions'][1]
-                # Azimuth katsojasta toiseen positioon (parametrit: sat ensin, sitten obs)
-                movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+                pos2 = pass_data['positions'][-1]
+                # Laske azimuth FROM pos1 TO pos2 = todellinen liikesuunta
+                movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
                 pass_data['movement_azimuth'] = movement_az
                 pass_data['movement_direction'] = azimuth_to_direction(movement_az)
             else:
@@ -663,16 +666,18 @@ def _process_single_satellite(satellite_data, observer_lat, observer_lon,
                     pass_data['end_time'] = current_time
                     pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
-                    # Käytä keskimmäistä positiota jotta kulkusuunta erottuu selkeästi ilmestymissuunnasta
+                    # Laske todellinen liikesuunta kahdesta peräkkäisestä positiosta
                     if len(pass_data['positions']) >= 3:
                         mid_idx = len(pass_data['positions']) // 2
-                        mid_pos = pass_data['positions'][mid_idx]
-                        movement_az = calculate_azimuth(mid_pos[1], mid_pos[2], observer_lat, observer_lon)
+                        pos1 = pass_data['positions'][mid_idx - 1]
+                        pos2 = pass_data['positions'][mid_idx + 1]
+                        movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
                         pass_data['movement_azimuth'] = movement_az
                         pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                     elif len(pass_data['positions']) >= 2:
-                        last_pos = pass_data['positions'][-1]
-                        movement_az = calculate_azimuth(last_pos[1], last_pos[2], observer_lat, observer_lon)
+                        pos1 = pass_data['positions'][0]
+                        pos2 = pass_data['positions'][-1]
+                        movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
                         pass_data['movement_azimuth'] = movement_az
                         pass_data['movement_direction'] = azimuth_to_direction(movement_az)
                     else:
@@ -695,8 +700,9 @@ def _process_single_satellite(satellite_data, observer_lat, observer_lon,
         pass_data['duration'] = (pass_data['end_time'] - pass_data['start_time']).total_seconds()
 
         if 'positions' in pass_data and len(pass_data['positions']) >= 2:
-            pos2 = pass_data['positions'][1]
-            movement_az = calculate_azimuth(pos2[1], pos2[2], observer_lat, observer_lon)
+            pos1 = pass_data['positions'][0]
+            pos2 = pass_data['positions'][-1]
+            movement_az = calculate_azimuth(pos2[1], pos2[2], pos1[1], pos1[2])
             pass_data['movement_azimuth'] = movement_az
             pass_data['movement_direction'] = azimuth_to_direction(movement_az)
         else:
